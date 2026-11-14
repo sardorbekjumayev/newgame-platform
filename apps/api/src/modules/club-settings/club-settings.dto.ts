@@ -13,6 +13,7 @@ const MAX_PRICE = 100_000_000_000;
 
 export class CreateZoneDto {
   @ApiProperty({ example: 'VIP' }) @Transform(trim) @IsString() @MinLength(1) @MaxLength(60) name!: string;
+  @ApiProperty({ example: 10, description: 'Zonadagi qurilmalar soni' }) @Type(() => Number) @IsInt() @Min(1) @Max(1000) devices_count!: number;
   @ApiPropertyOptional() @Transform(trimOrNull) @IsOptional() @IsString() @MaxLength(300) description?: string | null;
   @ApiPropertyOptional({ example: '#C6FF3D' }) @IsOptional() @ValidateIf((_, v) => v !== null) @Matches(COLOR) color?: string | null;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1000) sort_order?: number;
@@ -20,6 +21,7 @@ export class CreateZoneDto {
 
 export class UpdateZoneDto {
   @ApiPropertyOptional() @Transform(trim) @IsOptional() @IsString() @MinLength(1) @MaxLength(60) name?: string;
+  @ApiPropertyOptional({ example: 10 }) @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(1000) devices_count?: number;
   @ApiPropertyOptional() @Transform(trimOrNull) @IsOptional() @IsString() @MaxLength(300) description?: string | null;
   @ApiPropertyOptional() @IsOptional() @ValidateIf((_, v) => v !== null) @Matches(COLOR) color?: string | null;
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(1000) sort_order?: number;

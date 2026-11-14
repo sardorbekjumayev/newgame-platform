@@ -38,12 +38,13 @@ model users {
   updated_at            DateTime  @updatedAt @db.Timestamptz
   deleted_at            DateTime? @db.Timestamptz
 
-  user_roles     user_roles[]     @relation("user_roles_user")
+  user_roles     user_roles[]            @relation("user_roles_user")
   refresh_tokens refresh_tokens[]
   consents       consents[]
   device_tokens  device_tokens[]
   managed_clubs  manager_clubs[]
   link_requests  manager_link_requests[] @relation("link_request_manager")
+  bookings       bookings[]
 }
 
 model roles {
@@ -189,7 +190,6 @@ model idempotency_keys {
   @@unique([key, user_id, route])
 }
 
-
 // ---------- Telegram (login kodi) ----------
 
 model telegram_links {
@@ -205,7 +205,9 @@ model telegram_links {
 
 // ---------- Klublar, arizalar, menejerlar ----------
 
-/** Landing formasi orqali kelgan ulanish arizasi (akkauntsiz). */
+/**
+ * Landing formasi orqali kelgan ulanish arizasi (akkauntsiz).
+ */
 model club_applications {
   id             String    @id @db.Uuid
   full_name      String
@@ -230,36 +232,43 @@ model club_applications {
   @@index([phone])
 }
 
-/** Klub nuqtasi (filial). Har biri o'z operatori (user_roles OPERATOR, club_id) bilan boshqariladi. */
+/**
+ * Klub nuqtasi (filial). Har biri o'z operatori (user_roles OPERATOR, club_id) bilan boshqariladi.
+ */
 model clubs {
-  id             String             @id @db.Uuid
-  name           String
-  city           String
-  address        String?
-  phone          String?
-  status         String             @default("ACTIVE") // ACTIVE | SUSPENDED
+  id              String                    @id @db.Uuid
+  name            String
+  city            String
+  address         String?
+  phone           String?
+  status          String                    @default("ACTIVE") // ACTIVE | SUSPENDED
   // Xaritadagi joy — operator birinchi kirishda belgilaydi (WGS84)
-  latitude         Float?
-  longitude        Float?
-  location_set_at  DateTime?          @db.Timestamptz
+  latitude        Float?
+  longitude       Float?
+  location_set_at DateTime?                 @db.Timestamptz
   // Ish vaqti: { always_open?: true, mon: [{open:"10:00",close:"02:00"}], ... } — bo'sh massiv = dam olish kuni;
   // close <= open bo'lsa keyingi kunga o'tadi. Vaqt Asia/Tashkent bo'yicha. null — hali kiritilmagan.
-  working_hours    Json?
-  application_id String?            @db.Uuid
-  created_by     String?            @db.Uuid
-  created_at     DateTime           @default(now()) @db.Timestamptz
-  updated_at     DateTime           @updatedAt @db.Timestamptz
-  application    club_applications? @relation(fields: [application_id], references: [id], onDelete: SetNull)
-  managers       manager_clubs[]
-  link_requests  manager_link_requests[]
+  working_hours   Json?
+  application_id  String?                   @db.Uuid
+  created_by      String?                   @db.Uuid
+  created_at      DateTime                  @default(now()) @db.Timestamptz
+  updated_at      DateTime                  @updatedAt @db.Timestamptz
+  application     club_applications?        @relation(fields: [application_id], references: [id], onDelete: SetNull)
+  managers        manager_clubs[]
+  link_requests   manager_link_requests[]
   unlink_requests manager_unlink_requests[]
-  zones          zones[]
-  tariffs        tariffs[]
+  zones           zones[]
+  tariffs         tariffs[]
+  subscriptions   club_subscriptions[]
+  devices         devices[]
+  bookings        bookings[]
 
   @@index([application_id])
 }
 
-/** Menejer ↔ klub: menejer operator User ID sini kiritganda bog'lanadi. */
+/**
+ * Menejer ↔ klub: menejer operator User ID sini kiritganda bog'lanadi.
+ */
 model manager_clubs {
   manager_id String   @db.Uuid
   club_id    String   @db.Uuid
@@ -315,19 +324,126 @@ model manager_unlink_requests {
   @@index([club_id, manager_id])
 }
 
-/** Klub zonasi (VIP, Umumiy, PlayStation ...). Operator boshqaradi. O'chirish — soft (deleted_at). */
+/**
+ * Klub zonasi (VIP, Umumiy, PlayStation ...). Operator boshqaradi. O'chirish — soft (deleted_at).
+ */
+/**
+ * Platforma obuna rejasi (super admin). Narx — tiyinda, oyiga. Limit: zallar va jami qurilmalar soni.
+ */
+model plans {
+  id            String               @id @db.Uuid
+  name          String // lower(name) unique — migratsiyada
+  price         BigInt
+  max_zones     Int
+  max_devices   Int
+  is_active     Boolean              @default(true)
+  created_at    DateTime             @default(now()) @db.Timestamptz
+  updated_at    DateTime             @updatedAt @db.Timestamptz
+  subscriptions club_subscriptions[]
+}
+
+/**
+ * Klub obunasi. Amaldagisi — cancelled_at IS NULL (klubda bitta; partial unique). Sinov: starts_at..trial_ends_at, keyin ends_at gacha to'langan davr.
+ */
+model club_subscriptions {
+  id            String    @id @db.Uuid
+  club_id       String    @db.Uuid
+  plan_id       String    @db.Uuid
+  trial_days    Int       @default(0)
+  starts_at     DateTime  @db.Timestamptz
+  trial_ends_at DateTime  @db.Timestamptz
+  ends_at       DateTime  @db.Timestamptz
+  note          String?
+  created_by    String?   @db.Uuid
+  cancelled_at  DateTime? @db.Timestamptz
+  created_at    DateTime  @default(now()) @db.Timestamptz
+  updated_at    DateTime  @updatedAt @db.Timestamptz
+  club          clubs     @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  plan          plans     @relation(fields: [plan_id], references: [id])
+
+  @@index([club_id, created_at(sort: Desc)])
+  @@index([ends_at])
+}
+
+/**
+ * Qurilma = zona o'rindig'i (seat_no 1..devices_count, zal sxemasidagi raqam). Son kamaysa — is_active=false (bronlar saqlanadi).
+ */
+model devices {
+  id            String          @id @db.Uuid
+  club_id       String          @db.Uuid
+  zone_id       String          @db.Uuid
+  seat_no       Int
+  is_active     Boolean         @default(true)
+  created_at    DateTime        @default(now()) @db.Timestamptz
+  updated_at    DateTime        @updatedAt @db.Timestamptz
+  club          clubs           @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  zone          zones           @relation(fields: [zone_id], references: [id], onDelete: Cascade)
+  booking_items booking_items[]
+
+  @@unique([zone_id, seat_no])
+  @@index([club_id])
+}
+
+/**
+ * Mijoz broni. To'lov klubda. Status: CONFIRMED | CHECKED_IN | COMPLETED | CANCELLED | NO_SHOW.
+ */
+model bookings {
+  id               String          @id @db.Uuid
+  code             String          @unique
+  customer_id      String          @db.Uuid
+  club_id          String          @db.Uuid
+  status           String          @default("CONFIRMED")
+  start_at         DateTime        @db.Timestamptz
+  end_at           DateTime        @db.Timestamptz
+  duration_minutes Int
+  total_amount     BigInt
+  price_snapshot   Json?
+  cancelled_at     DateTime?       @db.Timestamptz
+  cancelled_by     String?         @db.Uuid
+  checked_in_at    DateTime?       @db.Timestamptz
+  created_at       DateTime        @default(now()) @db.Timestamptz
+  updated_at       DateTime        @updatedAt @db.Timestamptz
+  customer         users           @relation(fields: [customer_id], references: [id])
+  club             clubs           @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  items            booking_items[]
+
+  @@index([club_id, start_at])
+  @@index([customer_id, start_at(sort: Desc)])
+}
+
+/**
+ * Bron qilingan qurilma. EXCLUDE (device_id, [start_at, blocked_until)) WHERE active — migratsiyada (time_range generated).
+ */
+model booking_items {
+  id            String   @id @db.Uuid
+  booking_id    String   @db.Uuid
+  device_id     String   @db.Uuid
+  start_at      DateTime @db.Timestamptz
+  blocked_until DateTime @db.Timestamptz
+  price         BigInt
+  active        Boolean  @default(true)
+  booking       bookings @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+  device        devices  @relation(fields: [device_id], references: [id])
+
+  @@index([booking_id])
+  @@index([device_id, start_at])
+}
+
 model zones {
-  id          String    @id @db.Uuid
-  club_id     String    @db.Uuid
-  name        String
-  description String?
-  color       String? // UI belgisi, masalan "#C6FF3D"
-  sort_order  Int       @default(0)
-  created_at  DateTime  @default(now()) @db.Timestamptz
-  updated_at  DateTime  @updatedAt @db.Timestamptz
-  deleted_at  DateTime? @db.Timestamptz
-  club        clubs     @relation(fields: [club_id], references: [id], onDelete: Cascade)
-  tariffs     tariffs[]
+  id            String    @id @db.Uuid
+  club_id       String    @db.Uuid
+  name          String
+  description   String?
+  color         String? // UI belgisi, masalan "#C6FF3D"
+  devices_count Int? // zonadagi qurilmalar (PC/konsol) soni; eski zonalarda null
+  layout        Json? // zal sxemasi: {cols, rows, seats:[{n,x,y}], decor:[{kind,x,y}]} — o'rindiqlar 1..devices_count
+  sort_order    Int       @default(0)
+  created_at    DateTime  @default(now()) @db.Timestamptz
+  updated_at    DateTime  @updatedAt @db.Timestamptz
+  deleted_at    DateTime? @db.Timestamptz
+  club          clubs     @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  tariffs       tariffs[]
+  devices       devices[]
 
   @@index([club_id])
 }

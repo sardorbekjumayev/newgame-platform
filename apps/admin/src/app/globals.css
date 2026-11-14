@@ -90,3 +90,13 @@ body {
   background: var(--color-on-accent);
   box-shadow: none;
 }
+
+/* Ochiladigan ro'yxat (native select) — qorong'i fonda oq-ustiga-oq bo'lmasin */
+select {
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  background-color: var(--color-surface-2);
+  color: var(--color-fg);
+}

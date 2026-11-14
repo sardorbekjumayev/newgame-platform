@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Clock, Eye, Handshake, LayoutDashboard, Layers, LogOut, type LucideIcon, MapPinned, Menu, UserMinus, Users, X } from "lucide-react";
+import { Building2, CalendarDays, Clock, CreditCard, Package, Eye, Handshake, LayoutDashboard, LayoutGrid, Layers, LogOut, type LucideIcon, MapPinned, Menu, UserMinus, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -20,12 +20,16 @@ const NAV: Record<PanelKind, NavItem[]> = {
     { href: "/platform", label: "nav.dashboard", icon: LayoutDashboard, exact: true },
     { href: "/platform/applications", label: "nav.applications", icon: Handshake },
     { href: "/platform/clubs", label: "nav.clubs", icon: Building2 },
+    { href: "/platform/subscriptions", label: "nav.subscriptions", icon: CreditCard },
+    { href: "/platform/plans", label: "nav.plans", icon: Package },
     { href: "/platform/managers", label: "nav.managers", icon: Users },
     { href: "/platform/removals", label: "nav.removals", icon: UserMinus },
   ],
   operator: [
     { href: "/operator", label: "nav.myClub", icon: Building2, exact: true },
+    { href: "/operator/bookings", label: "nav.bookings", icon: CalendarDays },
     { href: "/operator/zones", label: "nav.zones", icon: Layers },
+    { href: "/operator/layout", label: "nav.layout", icon: LayoutGrid },
     { href: "/operator/hours", label: "nav.hours", icon: Clock },
     { href: "/operator/managers", label: "nav.managers", icon: Eye },
     { href: "/operator/location", label: "nav.location", icon: MapPinned },
@@ -41,7 +45,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
   const [open, setOpen] = useState(false);
   const panel = panelOf(me);
   // Super admin: yangi arizalar badge'i (har sahifa o'tishida yangilanadi)
-  const stats = useApi<{ applications_new: number; removals_pending: number }>(panel === "platform" && !me?.must_change_password ? `/admin/stats?_=${pathname}` : null);
+  const stats = useApi<{ applications_new: number; removals_pending: number; subscription_alerts: number }>(panel === "platform" && !me?.must_change_password ? `/admin/stats?_=${pathname}` : null);
 
   useEffect(() => {
     if (!loading && !me) router.replace("/login");
@@ -72,7 +76,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const badges: Record<string, number | undefined> = { "/platform/applications": stats.data?.applications_new, "/platform/removals": stats.data?.removals_pending };
+  const badges: Record<string, number | undefined> = { "/platform/applications": stats.data?.applications_new, "/platform/removals": stats.data?.removals_pending, "/platform/subscriptions": stats.data?.subscription_alerts };
   const items = NAV[panel].map((i) => (badges[i.href] ? { ...i, badge: badges[i.href] } : i));
   const name = [me.first_name, me.last_name].filter(Boolean).join(" ") || me.username || me.email;
   const isActive = (i: NavItem) => (i.exact ? pathname === i.href : pathname === i.href || pathname.startsWith(`${i.href}/`));

@@ -13,6 +13,13 @@ const uuid = new ParseUUIDPipe();
 export class ClubSettingsController {
   constructor(private readonly svc: ClubSettingsService) {}
 
+  @Get('plan-usage')
+  @RequirePermission('operator.dashboard')
+  @ApiOperation({ summary: "Operator: reja limitlari (zallar, qurilmalar) va hozirgi foydalanish" })
+  planUsage(@CurrentUser() u: AuthUser) {
+    return this.svc.planUsage(u.id);
+  }
+
   @Get('zones')
   @RequirePermission('operator.dashboard')
   @ApiOperation({ summary: 'Klub zonalari (tariflar soni bilan)' })
@@ -30,6 +37,13 @@ export class ClubSettingsController {
   @RequirePermission('operator.dashboard')
   updateZone(@Param('id', uuid) id: string, @Body() dto: UpdateZoneDto, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
     return this.svc.updateZone(u.id, id, dto, a);
+  }
+
+  @Put('zones/:id/layout')
+  @RequirePermission('operator.dashboard')
+  @ApiOperation({ summary: "Zal sxemasi: {cols, rows, seats:[{n,x,y}], decor:[{kind,x,y}]}" })
+  saveLayout(@Param('id', uuid) id: string, @Body() body: Record<string, unknown>, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
+    return this.svc.saveLayout(u.id, id, body, a);
   }
 
   @Delete('zones/:id')

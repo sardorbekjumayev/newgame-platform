@@ -21,7 +21,9 @@ export function ZonesView({ zones, compact }: { zones: Zones; compact?: boolean 
             <span className={cx("shrink-0 rounded-full", compact ? "h-7 w-1.5" : "h-9 w-2")} style={{ background: z.color ?? "#3a3f4b" }} />
             <div className="min-w-0">
               <div className={cx("font-display font-bold", compact ? "text-base" : "text-lg")}>{z.name}</div>
-              {z.description && <div className="text-sm text-muted">{z.description}</div>}
+              <div className="text-sm text-muted">
+                {[z.devices_count ? t("zone.devicesN", { n: z.devices_count }) : t("zone.devicesUnset"), z.description].filter(Boolean).join(" · ")}
+              </div>
             </div>
           </div>
           {z.tariffs.length === 0 ? (

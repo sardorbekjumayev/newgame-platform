@@ -59,8 +59,8 @@ export default function RemovalsPage() {
                 </div>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
-                <Party icon={User} title={t("removal.fromOperator")} p={r.operator} extraPhone={r.club.phone} />
-                <Party icon={Eye} title={t("removal.manager")} p={r.manager} />
+                <Party icon={User} title={t(r.by_manager ? "removal.operator" : "removal.fromOperator")} p={r.operator} extraPhone={r.club.phone ?? r.club.application_phone} telegram={r.club.application_telegram} />
+                <Party icon={Eye} title={t(r.by_manager ? "removal.fromManager" : "removal.manager")} p={r.manager} />
               </div>
               {r.reason && (
                 <div className="rounded-xl bg-surface-2 p-3 text-sm">
@@ -105,7 +105,8 @@ export default function RemovalsPage() {
   );
 }
 
-function Party({ icon: Icon, title, p, extraPhone }: { icon: typeof User; title: string; p: RemovalRequest["manager"]; extraPhone?: string | null }) {
+function Party({ icon: Icon, title, p, extraPhone, telegram }: { icon: typeof User; title: string; p: RemovalRequest["manager"]; extraPhone?: string | null; telegram?: string | null }) {
+  const { t } = useI18n();
   const phone = p?.phone ?? extraPhone ?? null;
   return (
     <div className="rounded-xl border border-line-soft p-3">
@@ -119,12 +120,19 @@ function Party({ icon: Icon, title, p, extraPhone }: { icon: typeof User; title:
           <div className="font-mono text-xs text-muted">
             {p.username} · ID {fmtPublicId(p.public_id)}
           </div>
-          {phone && (
-            <a href={`tel:${phone}`} className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline">
+          {phone ? (
+            <a href={`tel:${phone}`} className="mt-1 flex items-center gap-1 text-sm font-semibold text-accent hover:underline">
               <Phone className="h-3.5 w-3.5" />
               {phone}
             </a>
+          ) : (
+            <div className="mt-1 flex items-center gap-1 text-sm text-muted">
+              <Phone className="h-3.5 w-3.5" />
+              {t("removal.noPhone")}
+            </div>
           )}
+          {telegram && <div className="mt-0.5 text-sm text-muted">Telegram: {telegram}</div>}
+          {p.email && <div className="mt-0.5 truncate text-sm text-muted">{p.email}</div>}
         </>
       ) : (
         <div className="text-sm text-muted">—</div>

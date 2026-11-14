@@ -35,6 +35,10 @@ function ClubsMap() {
   const [zoom, setZoom] = useState(12);
   const [fit, setFit] = useState<LatLng[] | undefined>();
   const [me, setMe] = useState<LatLng | null>(null);
+  const [accuracy, setAccuracy] = useState<number | undefined>();
+  const [focus, setFocus] = useState(0);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [finding, setFinding] = useState(false);
   const [mode, setMode] = useState<Mode>("locating");
   const [q, setQ] = useState(params.get("q") ?? "");
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -67,24 +71,44 @@ function ClubsMap() {
     );
   }, []);
 
-  const locate = useCallback(() => {
-    if (!navigator.geolocation) return showAll();
-    setMode("locating");
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        const pos = { lat: p.coords.latitude, lng: p.coords.longitude };
-        setMe(pos);
-        setZoom(14);
-        setCenter(pos);
-        setMode("near");
-      },
-      () => showAll(),
-      { timeout: 8000, maximumAge: 300_000 },
-    );
-  }, [showAll]);
+  /**
+   * Aniq joylashuv: GPS (enableHighAccuracy), keshsiz. `manual` — tugma bosilgan: xato bo'lsa sababini ko'rsatamiz,
+   * "hammasi" rejimiga o'tmaymiz. Avtomatik (sahifa ochilganda) — ruxsat bo'lmasa barcha klublar.
+   */
+  const locate = useCallback(
+    (manual = false) => {
+      setGeoError(null);
+      if (!window.isSecureContext || !navigator.geolocation) {
+        if (manual) setGeoError(t(window.isSecureContext ? "map.geo.unsupported" : "map.geo.insecure"));
+        else showAll();
+        return;
+      }
+      setFinding(true);
+      if (!manual) setMode("locating");
+      navigator.geolocation.getCurrentPosition(
+        (p) => {
+          const pos = { lat: p.coords.latitude, lng: p.coords.longitude };
+          setFinding(false);
+          setMe(pos);
+          setAccuracy(Math.round(p.coords.accuracy));
+          setZoom(p.coords.accuracy < 200 ? 16 : 14);
+          setCenter(pos);
+          setFocus((n) => n + 1);
+          setMode("near");
+        },
+        (err) => {
+          setFinding(false);
+          if (manual) setGeoError(t(err.code === err.PERMISSION_DENIED ? "map.geo.denied" : err.code === err.TIMEOUT ? "map.geo.timeout" : "map.geo.unavailable"));
+          else showAll();
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+      );
+    },
+    [showAll, t],
+  );
 
   useEffect(() => {
-    const id = setTimeout(locate, 0);
+    const id = setTimeout(() => locate(false), 0);
     return () => clearTimeout(id);
   }, [locate]);
 
@@ -128,7 +152,7 @@ function ClubsMap() {
           />
         </div>
         <div className="flex gap-2">
-          <Button variant={mode === "near" || mode === "locating" ? "primary" : "secondary"} size="sm" onClick={locate} disabled={mode === "locating"}>
+          <Button variant={mode === "near" || mode === "locating" ? "primary" : "secondary"} size="sm" onClick={() => locate(true)} disabled={finding}>
             <LocateFixed className="h-4 w-4" />
             {t("map.nearMe")}
           </Button>
@@ -182,7 +206,28 @@ function ClubsMap() {
           </button>
         ))}
       </aside>
-      <MapView className="min-h-[55vh] flex-1" center={center} zoom={zoom} fit={fit} pin={me} markers={markers} onBoundsChange={load} onMarkerClick={select} />
+      <div className="relative flex min-h-[55vh] flex-1">
+        <MapView className="flex-1" center={center} zoom={zoom} focus={focus} fit={fit} pin={me} pinAccuracy={accuracy} markers={markers} onBoundsChange={load} onMarkerClick={select} />
+        <button
+          type="button"
+          onClick={() => locate(true)}
+          disabled={finding}
+          title={t("map.locateMe")}
+          aria-label={t("map.locateMe")}
+          className="absolute bottom-6 right-4 z-10 grid h-12 w-12 place-items-center rounded-full bg-accent text-on-accent shadow-xl transition hover:scale-105 disabled:opacity-80"
+        >
+          {finding ? <Spinner className="h-5 w-5" /> : <LocateFixed className="h-6 w-6" />}
+        </button>
+        {(geoError || (me && accuracy)) && (
+          <div className="absolute bottom-6 left-4 right-20 z-10 sm:right-auto sm:max-w-sm">
+            {geoError ? (
+              <div className="rounded-xl bg-bg/95 px-3 py-2 text-sm text-danger shadow-lg">{geoError}</div>
+            ) : (
+              <div className="inline-block rounded-xl bg-bg/90 px-3 py-1.5 text-xs text-muted shadow-lg">{t("map.geo.accuracy", { m: accuracy! })}</div>
+            )}
+          </div>
+        )}
+      </div>
     </main>
   );
 }

@@ -14,10 +14,12 @@ export function MapView({
   zoom = 12,
   markers,
   pin,
+  pinAccuracy,
+  focus,
   fit,
   className,
   ...events
-}: { center?: LatLng; zoom?: number; markers?: MapMarker[]; pin?: LatLng | null; fit?: LatLng[]; className?: string } & MapEvents) {
+}: { center?: LatLng; zoom?: number; markers?: MapMarker[]; pin?: LatLng | null; pinAccuracy?: number; focus?: number; fit?: LatLng[]; className?: string } & MapEvents) {
   const { t, locale } = useI18n();
   const el = useRef<HTMLDivElement>(null);
   const [handle, setHandle] = useState<MapHandle | null>(null);
@@ -56,7 +58,8 @@ export function MapView({
 
   useEffect(() => {
     handle?.setCenter({ lat: center.lat, lng: center.lng }, zoom);
-  }, [handle, center.lat, center.lng, zoom]);
+    // focus — har o'zgarganda markazga qayta suriladi (foydalanuvchi xaritani surgan bo'lsa ham)
+  }, [handle, center.lat, center.lng, zoom, focus]);
 
   useEffect(() => {
     if (fit) handle?.fitTo(fit);
@@ -67,8 +70,8 @@ export function MapView({
   }, [handle, markers]);
 
   useEffect(() => {
-    if (pin !== undefined) handle?.setPin(pin);
-  }, [handle, pin]);
+    if (pin !== undefined) handle?.setPin(pin, pinAccuracy);
+  }, [handle, pin, pinAccuracy]);
 
   return (
     <div className={`gc-map relative overflow-hidden bg-surface ${className ?? ""}`}>

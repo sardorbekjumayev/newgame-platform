@@ -6,6 +6,7 @@ import { serialize } from '../../common/serialize';
 import { uuidv7 } from '../../common/utils/id';
 import { PrismaService } from '../../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreateTariffDto, CreateZoneDto, UpdateTariffDto, UpdateZoneDto } from './club-settings.dto';
 
 export const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
@@ -13,7 +14,7 @@ const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 type Window = { open: string; close: string };
 export type WorkingHours = { always_open: boolean } & Record<(typeof DAY_KEYS)[number], Window[]>;
 
-const zoneSelect = { id: true, name: true, description: true, color: true, sort_order: true, created_at: true } as const;
+const zoneSelect = { id: true, name: true, description: true, color: true, devices_count: true, layout: true, sort_order: true, created_at: true } as const;
 const tariffSelect = { id: true, zone_id: true, name: true, type: true, price: true, duration_minutes: true, valid_from: true, valid_to: true, is_active: true, sort_order: true, created_at: true } as const;
 
 /** Ish vaqtini tekshirish va normallashtirish: kuniga ko'pi bilan 3 oraliq, open != close. */
@@ -32,6 +33,56 @@ export function normalizeWorkingHours(raw: Record<string, unknown>): WorkingHour
   return out;
 }
 
+/** Zona qurilmalarini devices_count ga moslash: 1..n faol (yo'qlari yaratiladi), n dan kattalari nofaol (bronlar saqlanadi). */
+export async function syncDevices(tx: Prisma.TransactionClient, clubId: string, zoneId: string, count: number) {
+  const have = new Set((await tx.devices.findMany({ where: { zone_id: zoneId }, select: { seat_no: true } })).map((d) => d.seat_no));
+  const missing = Array.from({ length: count }, (_, i) => i + 1).filter((n) => !have.has(n));
+  if (missing.length) await tx.devices.createMany({ data: missing.map((n) => ({ id: uuidv7(), club_id: clubId, zone_id: zoneId, seat_no: n })) });
+  await tx.devices.updateMany({ where: { zone_id: zoneId, seat_no: { lte: count } }, data: { is_active: true } });
+  await tx.devices.updateMany({ where: { zone_id: zoneId, seat_no: { gt: count } }, data: { is_active: false } });
+}
+
+export const DECOR_KINDS = ['ENTRANCE', 'CASHIER', 'WALL', 'AISLE', 'TV', 'WC'] as const;
+export type ZoneLayout = { cols: number; rows: number; seats: { n: number; x: number; y: number }[]; decor: { kind: (typeof DECOR_KINDS)[number]; x: number; y: number }[] };
+const GRID_MIN = 2;
+const GRID_MAX = 40;
+
+/** Zal sxemasini tekshirish: chegaralar, o'rindiq raqamlari 1..devices_count, bir katakda bitta narsa. */
+export function normalizeLayout(raw: unknown, devices: number): ZoneLayout {
+  const bad = (reason: string) => new AppException('VALIDATION_ERROR', 'Invalid layout', { field: 'layout', reason });
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const int = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) ? v : NaN);
+  const cols = int(r.cols);
+  const rows = int(r.rows);
+  if (!(cols >= GRID_MIN && cols <= GRID_MAX && rows >= GRID_MIN && rows <= GRID_MAX)) throw bad('INVALID_SIZE');
+  if (!Array.isArray(r.seats) || !Array.isArray(r.decor) || r.decor.length > cols * rows) throw bad('INVALID_SHAPE');
+  const used = new Set<string>();
+  const cell = (x: number, y: number) => {
+    if (!(x >= 0 && x < cols && y >= 0 && y < rows)) throw bad('OUT_OF_BOUNDS');
+    const k = `${x}:${y}`;
+    if (used.has(k)) throw bad('CELL_TAKEN');
+    used.add(k);
+  };
+  const nums = new Set<number>();
+  const seats = r.seats.map((s) => {
+    const o = (s ?? {}) as Record<string, unknown>;
+    const n = int(o.n), x = int(o.x), y = int(o.y);
+    if (!(n >= 1 && n <= devices) || nums.has(n)) throw bad('INVALID_SEAT');
+    nums.add(n);
+    cell(x, y);
+    return { n, x, y };
+  });
+  const decor = r.decor.map((d) => {
+    const o = (d ?? {}) as Record<string, unknown>;
+    const kind = o.kind as ZoneLayout['decor'][number]['kind'];
+    if (!DECOR_KINDS.includes(kind)) throw bad('INVALID_DECOR');
+    const x = int(o.x), y = int(o.y);
+    cell(x, y);
+    return { kind, x, y };
+  });
+  return { cols, rows, seats, decor };
+}
+
 /**
  * Operator: o'z klubining zonalari, tariflari va ish vaqti. Scope — operatorning klubi (user_roles OPERATOR).
  * Boshqa klub resursi "topilmadi" (404).
@@ -41,6 +92,7 @@ export class ClubSettingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly subs: SubscriptionsService,
   ) {}
 
   async clubOf(userId: string) {
@@ -55,6 +107,14 @@ export class ClubSettingsService {
 
   // ---------- Zonalar ----------
 
+  /** Operator: o'z rejasi limitlari va hozirgi foydalanish (zonalar sahifasida ko'rsatiladi). */
+  async planUsage(userId: string) {
+    const clubId = await this.clubOf(userId);
+    const lim = await this.subs.limits(clubId);
+    const zones = await this.prisma.zones.findMany({ where: { club_id: clubId, deleted_at: null }, select: { devices_count: true } });
+    return { limits: lim, zones: zones.length, devices: zones.reduce((n, z) => n + (z.devices_count ?? 0), 0) };
+  }
+
   async zones(userId: string) {
     const clubId = await this.clubOf(userId);
     const rows = await this.prisma.zones.findMany({
@@ -68,9 +128,11 @@ export class ClubSettingsService {
   async createZone(userId: string, dto: CreateZoneDto, actor: Actor) {
     const clubId = await this.clubOf(userId);
     await this.assertZoneNameFree(clubId, dto.name);
+    await this.subs.assertWithinLimits(clubId, { addZone: true, devices: dto.devices_count });
     const id = uuidv7();
     await this.prisma.$transaction(async (tx) => {
-      await tx.zones.create({ data: { id, club_id: clubId, name: dto.name, description: dto.description ?? null, color: dto.color ?? null, sort_order: dto.sort_order ?? 0 } });
+      await tx.zones.create({ data: { id, club_id: clubId, name: dto.name, description: dto.description ?? null, devices_count: dto.devices_count, color: dto.color ?? null, sort_order: dto.sort_order ?? 0 } });
+      await syncDevices(tx, clubId, id, dto.devices_count);
       await this.log(actor, clubId, 'operator.zone.create', 'zone', id, undefined, dto, tx);
     });
     return this.prisma.zones.findUniqueOrThrow({ where: { id }, select: zoneSelect });
@@ -80,8 +142,10 @@ export class ClubSettingsService {
     const clubId = await this.clubOf(userId);
     const old = await this.zoneOf(clubId, id);
     if (dto.name && dto.name.toLowerCase() !== old.name.toLowerCase()) await this.assertZoneNameFree(clubId, dto.name);
+    if (dto.devices_count !== undefined && dto.devices_count > (old.devices_count ?? 0)) await this.subs.assertWithinLimits(clubId, { zoneId: id, devices: dto.devices_count });
     await this.prisma.$transaction(async (tx) => {
       await tx.zones.update({ where: { id }, data: dto });
+      if (dto.devices_count !== undefined) await syncDevices(tx, clubId, id, dto.devices_count);
       await this.log(actor, clubId, 'operator.zone.update', 'zone', id, old, dto, tx);
     });
     return this.prisma.zones.findUniqueOrThrow({ where: { id }, select: zoneSelect });
@@ -95,9 +159,23 @@ export class ClubSettingsService {
     await this.prisma.$transaction(async (tx) => {
       await tx.tariffs.updateMany({ where: { zone_id: id, deleted_at: null }, data: { deleted_at: now } });
       await tx.zones.update({ where: { id }, data: { deleted_at: now } });
+      await tx.devices.updateMany({ where: { zone_id: id }, data: { is_active: false } });
       await this.log(actor, clubId, 'operator.zone.delete', 'zone', id, old, undefined, tx);
     });
     return { ok: true };
+  }
+
+  /** Zal sxemasi (vizual joylashuv). O'rindiqlar soni zonaning devices_count iga bog'liq. */
+  async saveLayout(userId: string, id: string, raw: unknown, actor: Actor) {
+    const clubId = await this.clubOf(userId);
+    const old = await this.zoneOf(clubId, id);
+    if (!old.devices_count) throw new AppException('VALIDATION_ERROR', 'Set devices count first', { field: 'devices_count', reason: 'DEVICES_COUNT_REQUIRED' });
+    const layout = normalizeLayout(raw, old.devices_count);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.zones.update({ where: { id }, data: { layout } });
+      await this.log(actor, clubId, 'operator.zone.layout', 'zone', id, { layout: old.layout }, { layout }, tx);
+    });
+    return this.prisma.zones.findUniqueOrThrow({ where: { id }, select: zoneSelect });
   }
 
   private async zoneOf(clubId: string, id: string) {

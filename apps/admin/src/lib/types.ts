@@ -23,7 +23,13 @@ export type ClubDetail = Omit<Club, "managers_count"> & ClubLocation & {
 
 export type Manager = StaffUser & { clubs: { id: string; name: string; city: string }[] };
 
-export type PlatformStats = { applications_new: number; applications_open: number; clubs: number; clubs_active: number; managers: number; operators: number; removals_pending: number; clubs_no_location: number };
+export type PlatformStats = { applications_new: number; applications_open: number; clubs: number; clubs_active: number; managers: number; operators: number; removals_pending: number; subscription_alerts: number; clubs_no_location: number };
+
+export type Plan = { id: string; name: string; price: number; max_zones: number; max_devices: number; is_active: boolean; created_at: string; clubs_count?: number };
+export type SubStatus = "TRIAL" | "ACTIVE" | "EXPIRING" | "EXPIRED";
+export type ClubSubscription = { id: string; club_id: string; trial_days: number; starts_at: string; trial_ends_at: string; ends_at: string; note: string | null; created_at: string; plan: Plan; status: SubStatus; days_left: number };
+export type SubscriptionRow = { id: string; name: string; city: string; address: string | null; status: "ACTIVE" | "SUSPENDED"; subscription: ClubSubscription | null; usage: { zones: number; devices: number } };
+export type PlanUsage = { limits: { plan: string; max_zones: number; max_devices: number } | null; zones: number; devices: number };
 
 export type OperatorDashboard = {
   me: Person;
@@ -31,27 +37,32 @@ export type OperatorDashboard = {
     id: string; name: string; city: string; address: string | null; phone: string | null; status: string; created_at: string;
     latitude: number | null; longitude: number | null; location_set_at: string | null; needs_location: boolean;
   };
-  managers: (Person & { linked_at: string; removal_request: { id: string; reason: string | null; created_at: string } | null })[];
+  managers: (Person & { phone: string | null; linked_at: string; removal_request: { id: string; reason: string | null; created_at: string; by_manager: boolean } | null })[];
   link_requests: { id: string; code: string; expires_at: string; created_at: string; manager: Person }[];
+  subscription: ClubSubSummary | null;
 };
 
 export type LinkRequest = { id: string; expires_at: string; created_at: string; attempts: number };
 
 export type ManagerClub = {
   id: string; name: string; city: string; address: string | null; phone: string | null; status: "ACTIVE" | "SUSPENDED"; created_at: string; linked_at: string;
-  zones: { id: string; name: string; color: string | null }[]; tariffs_count: number; is_open_now: boolean | null;
+  zones: { id: string; name: string; color: string | null; devices_count: number | null }[]; tariffs_count: number; is_open_now: boolean | null;
   operator: (Person & { status: string; last_login_at: string | null }) | null;
+  pending_removal: { id: string; reason: string | null; created_at: string; by_me: boolean } | null;
+  subscription: ClubSubSummary | null;
 };
+
+export type ClubSubSummary = { plan: { name: string; price: number; max_zones: number; max_devices: number }; status: "TRIAL" | "ACTIVE" | "EXPIRING" | "EXPIRED"; days_left: number; trial_ends_at: string; ends_at: string };
 
 export type RemovalStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 type Contact = StaffUser & { email: string | null };
 export type RemovalRequest = {
-  id: string; status: RemovalStatus; reason: string | null; admin_note: string | null; created_at: string; handled_at: string | null;
-  club: { id: string; name: string; city: string; address: string | null; phone: string | null };
+  id: string; status: RemovalStatus; by_manager: boolean; reason: string | null; admin_note: string | null; created_at: string; handled_at: string | null;
+  club: { id: string; name: string; city: string; address: string | null; phone: string | null; application_phone: string | null; application_telegram: string | null };
   manager: Contact | null; operator: Contact | null; handler: Contact | null;
 };
 
-export type Zone = { id: string; name: string; description: string | null; color: string | null; sort_order: number; created_at: string; tariffs_count: number };
+export type Zone = { id: string; name: string; description: string | null; color: string | null; devices_count: number | null; layout?: import("@/components/zone-layout").ZoneLayout | null; sort_order: number; created_at: string; tariffs_count: number };
 export type TariffType = "HOURLY" | "PACKAGE";
 export type Tariff = {
   id: string; zone_id: string; name: string; type: TariffType; price: number; duration_minutes: number | null;
@@ -61,7 +72,8 @@ export const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as con
 export type DayKey = (typeof DAY_KEYS)[number];
 export type WorkingHours = { always_open: boolean } & Record<DayKey, { open: string; close: string }[]>;
 
-export type ManagerClubDetail = Omit<ManagerClub, "zones" | "tariffs_count"> & {
+export type ManagerClubDetail = Omit<ManagerClub, "zones" | "tariffs_count" | "operator"> & {
+  operator: (Person & { status: string; last_login_at: string | null; phone: string | null }) | null;
   latitude: number | null; longitude: number | null; working_hours: WorkingHours | null;
   zones: (Omit<Zone, "sort_order" | "created_at" | "tariffs_count"> & { tariffs: Omit<Tariff, "zone_id" | "sort_order" | "created_at">[] })[];
 };

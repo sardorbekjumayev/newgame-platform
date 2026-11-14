@@ -112,4 +112,20 @@ export class ClubApplicationsService {
     });
     return this.get(id);
   }
+
+  /** Noto'g'ri/spam arizani o'chirish. Klub yaratilgan ariza o'chirilmaydi. To'liq nusxa audit logda qoladi. */
+  async remove(id: string, actor: Actor) {
+    const a = await this.prisma.club_applications.findUnique({ where: { id }, include: { _count: { select: { clubs: true } } } });
+    if (!a) throw new AppException('NOT_FOUND', 'Application not found');
+    if (a._count.clubs) throw new AppException('CONFLICT', 'Application has clubs', { reason: 'APPLICATION_HAS_CLUBS' });
+    const { _count, ...snapshot } = a;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.club_applications.delete({ where: { id } });
+      await this.audit.log(
+        { actor_id: actor.id, action: 'admin.club_application.delete', target_type: 'club_application', target_id: id, old_value: snapshot, ip: actor.ip ?? null, user_agent: actor.ua ?? null },
+        tx,
+      );
+    });
+    return { ok: true };
+  }
 }

@@ -17,7 +17,7 @@ export interface MapHandle {
   setMarkers(markers: MapMarker[]): void;
   setCenter(center: LatLng, zoom?: number): void;
   /** Bitta tanlanadigan pin (admin: filial joylashuvi). null — olib tashlash. */
-  setPin(position: LatLng | null): void;
+  setPin(position: LatLng | null, accuracyM?: number): void;
   /** Barcha nuqtalar ko'rinadigan qilib xaritani moslash. */
   fitTo(points: LatLng[]): void;
   getBBox(): BBox;

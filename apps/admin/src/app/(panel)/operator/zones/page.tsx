@@ -1,12 +1,13 @@
 "use client";
 
 import { formatMoney, parseSom, tiyinToSomInput } from "@ng/types";
+import { TimeInput } from "@/components/time-input";
 import { Clock, Layers, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Alert, Badge, Button, Card, Chip, Field, Heading, Input, Modal, Spinner, cx } from "@/components/ui";
 import { type MessageKey, useErrorText, useI18n } from "@/i18n/provider";
 import { session } from "@/lib/session";
-import type { Tariff, TariffType, Zone } from "@/lib/types";
+import type { PlanUsage, Tariff, TariffType, Zone } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
 const COLORS = ["#C6FF3D", "#FFB020", "#7C5CFF", "#22D3EE", "#FF5C7A", "#A3A3A3"];
@@ -17,12 +18,14 @@ export default function ZonesPage() {
   const errorText = useErrorText();
   const zones = useApi<Zone[]>("/operator/zones");
   const tariffs = useApi<Tariff[]>("/operator/tariffs");
+  const usage = useApi<PlanUsage>("/operator/plan-usage");
   const [zoneEdit, setZoneEdit] = useState<Zone | "new" | null>(null);
   const [tariffEdit, setTariffEdit] = useState<{ zoneId: string; tariff: Tariff | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const reload = () => {
     zones.reload();
     tariffs.reload();
+    usage.reload();
   };
 
   async function remove(path: string, confirmText: string) {
@@ -50,6 +53,19 @@ export default function ZonesPage() {
           {t("zone.new")}
         </Button>
       </div>
+      {usage.data?.limits && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border border-line-soft bg-surface px-4 py-3 text-sm">
+          <span className="font-bold">
+            {t("plan.yourPlan")}: {usage.data.limits.plan}
+          </span>
+          <span className={usage.data.zones >= usage.data.limits.max_zones ? "font-semibold text-warn" : "text-muted"}>
+            {t("plan.zonesUsed", { a: usage.data.zones, n: usage.data.limits.max_zones })}
+          </span>
+          <span className={usage.data.devices >= usage.data.limits.max_devices ? "font-semibold text-warn" : "text-muted"}>
+            {t("plan.devicesUsed", { a: usage.data.devices, n: usage.data.limits.max_devices })}
+          </span>
+        </div>
+      )}
       {(error || zones.error || tariffs.error) && <Alert>{error ?? zones.error ?? tariffs.error}</Alert>}
       {!zones.data ? (
         <Spinner />
@@ -75,7 +91,9 @@ export default function ZonesPage() {
                     <span className="h-10 w-2 shrink-0 rounded-full" style={{ background: z.color ?? "#3a3f4b" }} />
                     <div className="min-w-0">
                       <div className="font-display text-xl font-bold">{z.name}</div>
-                      {z.description && <div className="text-sm text-muted">{z.description}</div>}
+                      <div className="text-sm text-muted">
+                        {[z.devices_count ? t("zone.devicesN", { n: z.devices_count }) : t("zone.devicesUnset"), z.description].filter(Boolean).join(" · ")}
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-1">
@@ -161,6 +179,7 @@ function ZoneModal({ zone, onClose, onSaved }: { zone: Zone | null; onClose: () 
   const errorText = useErrorText();
   const [name, setName] = useState(zone?.name ?? "");
   const [description, setDescription] = useState(zone?.description ?? "");
+  const [devices, setDevices] = useState(zone?.devices_count ? String(zone.devices_count) : "");
   const [color, setColor] = useState<string | null>(zone?.color ?? COLORS[0]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,7 +189,7 @@ function ZoneModal({ zone, onClose, onSaved }: { zone: Zone | null; onClose: () 
     setBusy(true);
     setError(null);
     try {
-      const body = { name, description: description.trim() || null, color };
+      const body = { name, devices_count: Number(devices), description: description.trim() || null, color };
       if (zone) await session.patch(`/operator/zones/${zone.id}`, body);
       else await session.post("/operator/zones", body);
       onSaved();
@@ -194,6 +213,9 @@ function ZoneModal({ zone, onClose, onSaved }: { zone: Zone | null; onClose: () 
             </Chip>
           ))}
         </div>
+        <Field label={t("zone.devices")}>
+          <Input type="number" inputMode="numeric" min={1} max={1000} step={1} value={devices} onChange={(e) => setDevices(e.target.value.replace(/\D/g, ""))} placeholder="10" required />
+        </Field>
         <Field label={`${t("zone.description")} (${t("common.optional")})`}>
           <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("zone.descriptionPlaceholder")} maxLength={300} />
         </Field>
@@ -303,10 +325,10 @@ function TariffModal({ zones, zoneId, tariff, onClose, onSaved }: { zones: Zone[
         {windowOn && (
           <div className="grid grid-cols-2 gap-4">
             <Field label={t("tariff.from")}>
-              <Input type="time" value={from} onChange={(e) => setFrom(e.target.value)} required />
+              <TimeInput value={from} onChange={setFrom} />
             </Field>
             <Field label={t("tariff.to")}>
-              <Input type="time" value={to} onChange={(e) => setTo(e.target.value)} required />
+              <TimeInput value={to} onChange={setTo} />
             </Field>
           </div>
         )}

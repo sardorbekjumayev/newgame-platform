@@ -67,7 +67,7 @@ export class CatalogService {
           where: { deleted_at: null },
           orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
           select: {
-            id: true, name: true, description: true, color: true,
+            id: true, name: true, description: true, color: true, devices_count: true, layout: true,
             tariffs: {
               where: { deleted_at: null, is_active: true },
               orderBy: [{ sort_order: 'asc' }, { price: 'asc' }],

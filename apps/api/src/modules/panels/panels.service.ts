@@ -6,6 +6,7 @@ import { uuidv7 } from '../../common/utils/id';
 import { isOpenNow } from '../catalog/open-now';
 import { PrismaService } from '../../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 /** Kod amal qilish muddati va xato urinishlar chegarasi. */
 const LINK_TTL_MS = 10 * 60 * 1000;
@@ -23,6 +24,7 @@ export class PanelsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly subs: SubscriptionsService,
   ) {}
 
   // ---------- Operator ----------
@@ -36,13 +38,13 @@ export class PanelsService {
         where: { id: role.club_id! },
         select: {
           ...clubPublic, latitude: true, longitude: true, location_set_at: true,
-          managers: { select: { linked_at: true, manager: { select: personPublic } }, orderBy: { linked_at: 'desc' } },
-          unlink_requests: { where: { status: 'PENDING' }, select: { id: true, manager_id: true, reason: true, created_at: true } },
+          managers: { select: { linked_at: true, manager: { select: { ...personPublic, phone: true } } }, orderBy: { linked_at: 'desc' } },
+          unlink_requests: { where: { status: 'PENDING' }, select: { id: true, manager_id: true, requested_by: true, reason: true, created_at: true } },
         },
       }),
     ]);
     const { managers, unlink_requests, ...rest } = club;
-    const pendingRemoval = new Map(unlink_requests.map((r) => [r.manager_id, r]));
+    const pendingRemoval = new Map(unlink_requests.map(({ requested_by, ...r }) => [r.manager_id, { ...r, by_manager: requested_by === r.manager_id }]));
     // Operator User ID sini menejerga aytadi → menejer so'rov yuboradi → kod shu yerda ko'rinadi
     return {
       me,
@@ -50,6 +52,7 @@ export class PanelsService {
       club: { ...rest, needs_location: rest.latitude === null || rest.longitude === null },
       managers: managers.map((m) => ({ ...m.manager, linked_at: m.linked_at, removal_request: pendingRemoval.get(m.manager.id) ?? null })),
       link_requests: await this.operatorRequests(role.club_id!),
+      subscription: (await this.subs.summaries([role.club_id!])).get(role.club_id!) ?? null,
     };
   }
 
@@ -117,7 +120,7 @@ export class PanelsService {
 
   async cancelRemoval(userId: string, requestId: string) {
     const clubId = await this.operatorClubId(userId);
-    const { count } = await this.prisma.manager_unlink_requests.updateMany({ where: { id: requestId, club_id: clubId, status: 'PENDING' }, data: { status: 'CANCELLED' } });
+    const { count } = await this.prisma.manager_unlink_requests.updateMany({ where: { id: requestId, club_id: clubId, requested_by: userId, status: 'PENDING' }, data: { status: 'CANCELLED' } });
     if (!count) throw new AppException('NOT_FOUND', 'Request not found');
     return { ok: true };
   }
@@ -134,7 +137,7 @@ export class PanelsService {
           select: {
             ...clubPublic,
             working_hours: true,
-            zones: { where: { deleted_at: null }, orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }], select: { id: true, name: true, color: true } },
+            zones: { where: { deleted_at: null }, orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }], select: { id: true, name: true, color: true, devices_count: true } },
             _count: { select: { tariffs: { where: { deleted_at: null, is_active: true, zone: { deleted_at: null } } } } },
           },
         },
@@ -145,9 +148,17 @@ export class PanelsService {
       select: { club_id: true, user: { select: { ...personPublic, status: true, last_login_at: true } } },
     });
     const byClub = new Map(ops.map((o) => [o.club_id, o.user]));
+    const pending = await this.prisma.manager_unlink_requests.findMany({
+      where: { manager_id: managerId, status: 'PENDING', club_id: { in: rows.map((r) => r.club.id) } },
+      select: { id: true, club_id: true, requested_by: true, reason: true, created_at: true },
+    });
+    const subsByClub = await this.subs.summaries(rows.map((r) => r.club.id));
+    const pendingByClub = new Map(pending.map(({ club_id, requested_by, ...r }) => [club_id, { ...r, by_me: requested_by === managerId }]));
     return rows.map(({ club: { _count, working_hours, ...c }, linked_at }) => ({
       ...c,
       linked_at,
+      pending_removal: pendingByClub.get(c.id) ?? null,
+      subscription: subsByClub.get(c.id) ?? null,
       tariffs_count: _count.tariffs,
       is_open_now: isOpenNow(working_hours),
       operator: byClub.get(c.id) ?? null,
@@ -166,7 +177,7 @@ export class PanelsService {
           where: { deleted_at: null },
           orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
           select: {
-            id: true, name: true, description: true, color: true,
+            id: true, name: true, description: true, color: true, devices_count: true, layout: true,
             tariffs: {
               where: { deleted_at: null },
               orderBy: [{ sort_order: 'asc' }, { price: 'asc' }],
@@ -178,9 +189,13 @@ export class PanelsService {
     });
     const op = await this.prisma.user_roles.findFirst({
       where: { club_id: clubId, role: { code: 'OPERATOR' } },
-      select: { user: { select: { ...personPublic, status: true, last_login_at: true } } },
+      select: { user: { select: { ...personPublic, phone: true, status: true, last_login_at: true } } },
     });
-    return { ...c, linked_at: link.linked_at, is_open_now: isOpenNow(c.working_hours), operator: op?.user ?? null };
+    // Operator telefoni: akkaunt → klub → klub arizasi (menejer bog'lana olishi uchun)
+    const app = op?.user.phone || c.phone ? null : await this.prisma.clubs.findUnique({ where: { id: clubId }, select: { application: { select: { phone: true } } } });
+    const operator = op ? { ...op.user, phone: op.user.phone ?? c.phone ?? app?.application?.phone ?? null } : null;
+    const subscription = (await this.subs.summaries([clubId])).get(clubId) ?? null;
+    return { ...c, linked_at: link.linked_at, is_open_now: isOpenNow(c.working_hours), operator, subscription };
   }
 
   /**
@@ -245,10 +260,29 @@ export class PanelsService {
     return { ok: true };
   }
 
-  async unlink(managerId: string, clubId: string, actor: Actor) {
-    const { count } = await this.prisma.manager_clubs.deleteMany({ where: { manager_id: managerId, club_id: clubId } });
-    if (!count) throw new AppException('NOT_FOUND', 'Club not found');
-    await this.audit.log({ actor_id: actor.id, club_id: clubId, action: 'manager.club.unlink', target_type: 'club', target_id: clubId, ip: actor.ip, user_agent: actor.ua, request_id: actor.request_id });
+  /**
+   * Menejer klubni o'zi olib tashlay olmaydi: so'rov super adminga boradi (operator so'roviga o'xshash),
+   * super admin tasdiqlasa manager_clubs o'chiriladi.
+   */
+  async requestUnlink(managerId: string, clubId: string, reason: string | undefined, actor: Actor) {
+    const link = await this.prisma.manager_clubs.findUnique({ where: { manager_id_club_id: { manager_id: managerId, club_id: clubId } } });
+    if (!link) throw new AppException('NOT_FOUND', 'Club not found');
+    const id = uuidv7();
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.manager_unlink_requests.create({ data: { id, club_id: clubId, manager_id: managerId, requested_by: managerId, reason: reason?.trim() || null } });
+        await this.audit.log({ actor_id: actor.id, club_id: clubId, action: 'manager.club.unlink_request', target_type: 'manager_unlink_request', target_id: id, new_value: { reason: reason ?? null }, ip: actor.ip, user_agent: actor.ua, request_id: actor.request_id }, tx);
+      });
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2002') throw new AppException('CONFLICT', 'Request already pending', { reason: 'REMOVAL_PENDING' });
+      throw e;
+    }
+    return { id, status: 'PENDING' };
+  }
+
+  async cancelUnlink(managerId: string, requestId: string) {
+    const { count } = await this.prisma.manager_unlink_requests.updateMany({ where: { id: requestId, manager_id: managerId, requested_by: managerId, status: 'PENDING' }, data: { status: 'CANCELLED' } });
+    if (!count) throw new AppException('NOT_FOUND', 'Request not found');
     return { ok: true };
   }
 }

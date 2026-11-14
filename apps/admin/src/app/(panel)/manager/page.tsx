@@ -3,6 +3,7 @@
 import { BarChart3, Building2, ChevronRight, KeyRound, MapPin, Plus, User, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { ClubSubscriptionInfo } from "@/components/club-subscription";
 import { ShareClub } from "@/components/share-club";
 import { Alert, Badge, Button, Card, Heading, Input, Spinner } from "@/components/ui";
 import { type MessageKey, useErrorText, useI18n } from "@/i18n/provider";
@@ -69,9 +70,20 @@ export default function ManagerPage() {
     });
 
   async function unlink(c: ManagerClub) {
-    if (!confirm(`${t("managerPanel.removeConfirm")}\n${c.name}`)) return;
+    const reason = prompt(`${t("managerPanel.removeConfirm")}\n${c.name}\n\n${t("managerPanel.removeReason")}`);
+    if (reason === null) return;
     try {
-      await session.delete(`/manager/clubs/${c.id}`);
+      await session.post(`/manager/clubs/${c.id}/removal-request`, reason.trim() ? { reason: reason.trim() } : {});
+      clubs.reload();
+    } catch (err) {
+      setError(errorText(err));
+    }
+  }
+
+  async function cancelUnlink(c: ManagerClub) {
+    if (!c.pending_removal || !confirm(t("removal.cancelConfirm"))) return;
+    try {
+      await session.delete(`/manager/removal-requests/${c.pending_removal.id}`);
       clubs.reload();
     } catch (err) {
       setError(errorText(err));
@@ -142,10 +154,26 @@ export default function ManagerPage() {
                     {[c.city, c.address].filter(Boolean).join(", ")}
                   </div>
                 </div>
-                <button className="rounded-lg p-1 text-muted hover:bg-surface-2 hover:text-danger-soft" title={t("managerPanel.remove")} aria-label={t("managerPanel.remove")} onClick={() => unlink(c)}>
-                  <X className="h-4 w-4" />
-                </button>
+                {!c.pending_removal && (
+                  <button className="rounded-lg p-1 text-muted hover:bg-surface-2 hover:text-danger-soft" title={t("managerPanel.remove")} aria-label={t("managerPanel.remove")} onClick={() => unlink(c)}>
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
+              {c.pending_removal && (
+                <div className="space-y-1.5 rounded-xl bg-surface-2 p-3 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge tone="amber">{t("removal.pending")}</Badge>
+                    {c.pending_removal.by_me && (
+                      <button className="text-xs font-semibold text-muted hover:text-fg hover:underline" onClick={() => cancelUnlink(c)}>
+                        {t("removal.cancel")}
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-muted">{t(c.pending_removal.by_me ? "managerPanel.removePending" : "managerPanel.removeByOperator")}</p>
+                  {c.pending_removal.reason && <p className="text-muted">«{c.pending_removal.reason}»</p>}
+                </div>
+              )}
               <div className="flex items-center justify-between gap-2 border-t border-line-soft pt-3 text-sm">
                 <span className="inline-flex min-w-0 items-center gap-1.5">
                   <User className="h-4 w-4 shrink-0 text-accent" />
@@ -155,12 +183,14 @@ export default function ManagerPage() {
                 </span>
                 <Badge tone={c.status === "ACTIVE" ? "green" : "red"}>{t(`club.status.${c.status}` as MessageKey)}</Badge>
               </div>
+              <ClubSubscriptionInfo s={c.subscription} compact />
               {c.zones.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {c.zones.map((z) => (
                     <span key={z.id} className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-2 py-1 text-xs font-semibold">
                       <span className="h-2 w-2 rounded-full" style={{ background: z.color ?? "#3a3f4b" }} />
                       {z.name}
+                      {z.devices_count ? <span className="font-normal text-muted">· {z.devices_count}</span> : null}
                     </span>
                   ))}
                 </div>

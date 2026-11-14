@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, LogIn, Map, UserCircle } from "lucide-react";
+import { Home, LogIn, Map, UserCircle, CalendarCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LocaleSwitcher } from "@/components/locale-switcher";
@@ -14,12 +14,13 @@ export function Header() {
   const pathname = usePathname();
   const active = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
-  const links: { href: string; label: string; icon: typeof Home }[] = [{ href: "/map", label: t("nav.map"), icon: Map }];
+  const links: { href: string; label: string; icon: typeof Home }[] = [{ href: "/map", label: t("nav.map"), icon: Map }, ...(me ? [{ href: "/bookings", label: t("booking.mine"), icon: CalendarCheck }] : [])];
 
   // Pastki menyu — ko'pi bilan 5 ta (barmoq bilan bosishga qulay); qolganlari Profil sahifasida
   const tabs = [
     { href: "/", label: t("nav.home"), icon: Home },
     { href: "/map", label: t("nav.map"), icon: Map },
+    ...(me ? [{ href: "/bookings", label: t("booking.mineShort"), icon: CalendarCheck }] : []),
     me ? { href: "/profile", label: me.first_name || t("nav.profile"), icon: UserCircle } : { href: "/login", label: t("nav.login"), icon: LogIn },
   ];
 

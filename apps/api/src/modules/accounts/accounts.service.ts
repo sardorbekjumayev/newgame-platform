@@ -11,6 +11,7 @@ import { isOpenNow } from '../catalog/open-now';
 import { PrismaService } from '../../database/prisma.service';
 import { REDIS } from '../../infra/redis/redis.module';
 import { AuditService } from '../audit/audit.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { accessCutoffKey, assertStrongPassword, generateTempPassword, hashPassword } from '../auth/password';
 import { ACCESS_TTL_S } from '../auth/token.service';
 import type { RoleCode } from '../rbac/catalog';
@@ -35,6 +36,7 @@ export class AccountsService {
     private readonly audit: AuditService,
     private readonly rbac: RbacService,
     @Inject(REDIS) private readonly redis: Redis,
+    private readonly subs: SubscriptionsService,
   ) {}
 
   // ---------- Klublar (filiallar) + operator ----------
@@ -98,7 +100,7 @@ export class AccountsService {
           where: { deleted_at: null },
           orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
           select: {
-            id: true, name: true, description: true, color: true,
+            id: true, name: true, description: true, color: true, devices_count: true, layout: true,
             tariffs: {
               where: { deleted_at: null },
               orderBy: [{ sort_order: 'asc' }, { price: 'asc' }],
@@ -184,7 +186,7 @@ export class AccountsService {
 
   /** Platforma umumiy ko'rsatkichlari (super admin dashboard). */
   async stats() {
-    const [applicationsNew, applicationsOpen, clubs, clubsActive, managers, operators, removalsPending, clubsNoLocation] = await Promise.all([
+    const [applicationsNew, applicationsOpen, clubs, clubsActive, managers, operators, removalsPending, subscriptionAlerts, clubsNoLocation] = await Promise.all([
       this.prisma.club_applications.count({ where: { status: 'NEW' } }),
       this.prisma.club_applications.count({ where: { status: { in: ['NEW', 'CONTACTED'] } } }),
       this.prisma.clubs.count(),
@@ -192,9 +194,10 @@ export class AccountsService {
       this.prisma.user_roles.count({ where: { role: { code: 'MANAGER' } } }),
       this.prisma.user_roles.count({ where: { role: { code: 'OPERATOR' } } }),
       this.prisma.manager_unlink_requests.count({ where: { status: 'PENDING' } }),
+      this.subs.alertsCount(),
       this.prisma.clubs.count({ where: { latitude: null } }),
     ]);
-    return { applications_new: applicationsNew, applications_open: applicationsOpen, clubs, clubs_active: clubsActive, managers, operators, removals_pending: removalsPending, clubs_no_location: clubsNoLocation };
+    return { applications_new: applicationsNew, applications_open: applicationsOpen, clubs, clubs_active: clubsActive, managers, operators, removals_pending: removalsPending, subscription_alerts: subscriptionAlerts, clubs_no_location: clubsNoLocation };
   }
 
   // ---------- Menejerni klubdan olib tashlash so'rovlari (operatordan) ----------
@@ -204,7 +207,7 @@ export class AccountsService {
     const [rows, total] = await Promise.all([
       this.prisma.manager_unlink_requests.findMany({
         where, orderBy: { created_at: 'desc' }, ...pageArgs(q),
-        include: { club: { select: { id: true, name: true, city: true, address: true, phone: true } } },
+        include: { club: { select: { id: true, name: true, city: true, address: true, phone: true, application: { select: { phone: true, telegram: true } } } } },
       }),
       this.prisma.manager_unlink_requests.count({ where }),
     ]);
@@ -213,8 +216,21 @@ export class AccountsService {
     const people = new Map(
       (await this.prisma.users.findMany({ where: { id: { in: ids } }, select: { ...userPublic, email: true } })).map((u) => [u.id, u]),
     );
+    // Menejer o'zi so'ragan bo'lsa — klub operatori kontakti alohida olinadi
+    const byManager = rows.filter((r) => r.requested_by === r.manager_id).map((r) => r.club_id);
+    const clubOps = new Map(
+      (byManager.length
+        ? await this.prisma.user_roles.findMany({ where: { club_id: { in: byManager }, role: { code: 'OPERATOR' } }, select: { club_id: true, user: { select: { ...userPublic, email: true } } } })
+        : []
+      ).map((o) => [o.club_id, o.user]),
+    );
     return new Paginated(
-      rows.map((r) => ({ ...r, manager: people.get(r.manager_id) ?? null, operator: people.get(r.requested_by) ?? null, handler: r.handled_by ? (people.get(r.handled_by) ?? null) : null })),
+      rows.map(({ club: { application, ...club }, ...r }) => ({
+        ...r,
+        club: { ...club, application_phone: application?.phone ?? null, application_telegram: application?.telegram ?? null },
+        by_manager: r.requested_by === r.manager_id,
+        manager: people.get(r.manager_id) ?? null,
+        operator: r.requested_by === r.manager_id ? (clubOps.get(r.club_id) ?? null) : (people.get(r.requested_by) ?? null), handler: r.handled_by ? (people.get(r.handled_by) ?? null) : null })),
       { page: q.page, limit: q.limit, total },
     );
   }

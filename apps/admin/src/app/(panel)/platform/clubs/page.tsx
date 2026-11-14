@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Clock, ExternalLink, Layers, MapPin, MapPinOff, Plus, Search, User } from "lucide-react";
+import { Building2, Clock, ExternalLink, LayoutGrid, Layers, MapPin, MapPinOff, Plus, Search, User } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { type Credentials, CredentialsModal, CopyButton } from "@/components/credentials";
@@ -8,6 +8,7 @@ import { HoursView, ZonesView } from "@/components/club-offer";
 import { Pager } from "@/components/pager";
 import { ShareClub } from "@/components/share-club";
 import { StaffActions } from "@/components/staff-actions";
+import { ZoneLayoutView } from "@/components/zone-layout";
 import { Alert, Badge, Button, Card, Field, Heading, Input, Modal, Spinner } from "@/components/ui";
 import { type MessageKey, useErrorText, useI18n } from "@/i18n/provider";
 import { fmtDateTime, fmtPublicId } from "@/lib/format";
@@ -321,6 +322,26 @@ function ClubModal({ id, onClose, onChanged }: { id: string; onClose: () => void
             </div>
             <ZonesView zones={c.zones} compact />
           </section>
+          {c.zones.some((z) => z.layout && z.devices_count) && (
+            <section className="min-w-0 space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-muted">
+                <LayoutGrid className="h-3.5 w-3.5" />
+                {t("layout.title")}
+              </div>
+              {c.zones
+                .filter((z) => z.layout && z.devices_count)
+                .map((z) => (
+                  <div key={z.id} className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: z.color ?? "#3a3f4b" }} />
+                      {z.name}
+                      <span className="font-normal text-muted">· {t("zone.devicesN", { n: z.devices_count! })}</span>
+                    </div>
+                    <ZoneLayoutView zone={z} decorLabel={(k) => t(`layout.decor.${k}` as MessageKey)} />
+                  </div>
+                ))}
+            </section>
+          )}
           <section className="space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-muted">
               <Clock className="h-3.5 w-3.5" />

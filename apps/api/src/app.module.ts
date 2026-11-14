@@ -16,6 +16,8 @@ import { RbacModule } from './modules/rbac/rbac.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { ClubApplicationsModule } from './modules/club-applications/club-applications.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
 import { PanelsModule } from './modules/panels/panels.module';
 import { GeoModule } from './modules/geo/geo.module';
 import { ClubSettingsModule } from './modules/club-settings/club-settings.module';
@@ -52,6 +54,8 @@ import { CatalogModule } from './modules/catalog/catalog.module';
     AuthModule,
     ClubApplicationsModule,
     AccountsModule,
+    SubscriptionsModule,
+    BookingsModule,
     PanelsModule,
     GeoModule,
     ClubSettingsModule,

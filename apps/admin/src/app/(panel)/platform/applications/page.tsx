@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Phone, Search, Send } from "lucide-react";
+import { Building2, Phone, Search, Send, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Pager } from "@/components/pager";
@@ -106,6 +106,21 @@ function ApplicationModal({ id, onClose, onChanged }: { id: string; onClose: () 
     }
   }
 
+  async function remove() {
+    if (!a || !confirm(`${t("app.deleteConfirm")}\n${a.club_name ?? a.full_name}`)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await session.delete(`/admin/club-applications/${id}`);
+      onChanged();
+      onClose();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const rows: [MessageKey, React.ReactNode][] = a
     ? [
         ["app.fullName", a.full_name],
@@ -173,6 +188,12 @@ function ApplicationModal({ id, onClose, onChanged }: { id: string; onClose: () 
               {t("app.createClub")}
             </Button>
           </div>
+          {!a.clubs?.length && (
+            <Button variant="danger" className="w-full" disabled={busy} onClick={remove}>
+              <Trash2 className="h-4 w-4" />
+              {t("app.delete")}
+            </Button>
+          )}
         </div>
       )}
     </Modal>

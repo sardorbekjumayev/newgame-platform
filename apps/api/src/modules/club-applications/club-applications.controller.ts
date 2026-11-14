@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { type Actor, CurrentActor } from '../../common/decorators/actor.decorator';
 import { Public, RequirePermission } from '../../common/decorators/auth.decorators';
@@ -51,5 +51,13 @@ export class ClubApplicationsController {
   @ApiOperation({ summary: 'Holat (NEW → CONTACTED → APPROVED | REJECTED) va ichki izoh; audit log' })
   update(@Param('id', uuid) id: string, @Body() dto: UpdateClubApplicationDto, @CurrentActor() a: Actor) {
     return this.svc.update(id, dto, a);
+  }
+
+  @ApiBearerAuth()
+  @Delete('admin/club-applications/:id')
+  @RequirePermission('platform.applications.manage')
+  @ApiOperation({ summary: "Noto'g'ri arizani o'chirish (klub yaratilgan bo'lsa — 409); audit log" })
+  remove(@Param('id', uuid) id: string, @CurrentActor() a: Actor) {
+    return this.svc.remove(id, a);
   }
 }

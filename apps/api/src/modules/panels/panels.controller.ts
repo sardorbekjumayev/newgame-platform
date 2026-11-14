@@ -121,10 +121,18 @@ export class PanelsController {
     return this.svc.requestLink(u.id, dto.public_id, a);
   }
 
-  @Delete('manager/clubs/:clubId')
+  @RateLimit('sensitive')
+  @Post('manager/clubs/:clubId/removal-request')
   @RequirePermission('manager.dashboard')
-  @ApiOperation({ summary: 'Menejer: klubni ro\'yxatdan olib tashlash' })
-  unlink(@Param('clubId', new ParseUUIDPipe()) clubId: string, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
-    return this.svc.unlink(u.id, clubId, a);
+  @ApiOperation({ summary: 'Menejer: klubdan chiqish so\'rovi (super admin tasdiqlaydi)' })
+  unlinkRequest(@Param('clubId', uuid) clubId: string, @Body() dto: RemovalRequestDto, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
+    return this.svc.requestUnlink(u.id, clubId, dto.reason, a);
+  }
+
+  @Delete('manager/removal-requests/:id')
+  @RequirePermission('manager.dashboard')
+  @ApiOperation({ summary: 'Menejer: klubdan chiqish so\'rovini bekor qilish' })
+  cancelUnlink(@Param('id', uuid) id: string, @CurrentUser() u: AuthUser) {
+    return this.svc.cancelUnlink(u.id, id);
   }
 }

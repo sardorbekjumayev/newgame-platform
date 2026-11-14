@@ -1,8 +1,9 @@
 "use client";
 
 import { Copy, Plus, Save, X } from "lucide-react";
+import { TimeInput } from "@/components/time-input";
 import { useState } from "react";
-import { Alert, Button, Card, Heading, Input, Spinner, cx } from "@/components/ui";
+import { Alert, Button, Card, Heading, Spinner, cx } from "@/components/ui";
 import { type MessageKey, useErrorText, useI18n } from "@/i18n/provider";
 import { session } from "@/lib/session";
 import { DAY_KEYS, type DayKey, type WorkingHours } from "@/lib/types";
@@ -90,9 +91,9 @@ function HoursForm({ initial, isNew, title }: { initial: WorkingHours; isNew: bo
                   <div className="flex flex-1 flex-col gap-2">
                     {windows.map((w, i) => (
                       <div key={i} className="flex items-center gap-2">
-                        <Input type="time" value={w.open} onChange={(e) => update(d, (ws) => ws.map((x, j) => (j === i ? { ...x, open: e.target.value } : x)))} className="h-10 w-32" />
+                        <TimeInput value={w.open} onChange={(v) => update(d, (ws) => ws.map((x, j) => (j === i ? { ...x, open: v } : x)))} className="h-10" />
                         <span className="text-muted">—</span>
-                        <Input type="time" value={w.close} onChange={(e) => update(d, (ws) => ws.map((x, j) => (j === i ? { ...x, close: e.target.value } : x)))} className="h-10 w-32" />
+                        <TimeInput value={w.close} onChange={(v) => update(d, (ws) => ws.map((x, j) => (j === i ? { ...x, close: v } : x)))} className="h-10" />
                         {w.close <= w.open && <span className="text-xs text-muted">{t("hours.nextDay")}</span>}
                         {windows.length > 1 && (
                           <button type="button" className="text-muted hover:text-danger-soft" onClick={() => update(d, (ws) => ws.filter((_, j) => j !== i))} aria-label={t("common.delete")}>

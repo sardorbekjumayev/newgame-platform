@@ -323,7 +323,7 @@ export type ClubCard = {
   zones: { name: string; color: string | null }[]; price_from: number | null; price_unit: "HOUR" | "PACKAGE" | null; is_open_now: boolean | null;
 };
 export type PublicTariff = { id: string; name: string; type: "HOURLY" | "PACKAGE"; price: number; duration_minutes: number | null; valid_from: string | null; valid_to: string | null };
-export type PublicZone = { id: string; name: string; description: string | null; color: string | null; tariffs: PublicTariff[] };
+export type PublicZone = { id: string; name: string; description: string | null; color: string | null; devices_count: number | null; layout: import("@/components/zone-layout-view").ZoneLayout | null; tariffs: PublicTariff[] };
 export type WorkingHoursPublic = { always_open?: boolean } & Partial<Record<"mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun", { open: string; close: string }[]>>;
 export type ClubDetailPublic = Omit<ClubCard, "zones"> & { zones: PublicZone[]; working_hours: WorkingHoursPublic | null };
 export type CatalogStats = { clubs: number; open_now: number; cities: number };

@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Eye, UserMinus } from "lucide-react";
+import { Phone, Clock, Eye, UserMinus } from "lucide-react";
 import { useState } from "react";
 import { Alert, Badge, Button, Card, Field, Heading, Modal } from "@/components/ui";
 import { useErrorText, useI18n } from "@/i18n/provider";
@@ -55,6 +55,14 @@ export default function OperatorManagersPage() {
                     <div className="truncate font-mono text-xs text-muted">
                       {m.username} · ID {fmtPublicId(m.public_id)}
                     </div>
+                    {m.phone ? (
+                      <a href={`tel:${m.phone}`} className="inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline">
+                        <Phone className="h-3.5 w-3.5" />
+                        {m.phone}
+                      </a>
+                    ) : (
+                      <div className="text-xs text-muted">{t("removal.noPhone")}</div>
+                    )}
                   </div>
                 </div>
                 {m.removal_request && <Badge tone="amber">{t("removal.pending")}</Badge>}
@@ -66,10 +74,13 @@ export default function OperatorManagersPage() {
                     <Clock className="h-4 w-4 text-warn" />
                     {t("removal.waiting")}
                   </div>
+                  {m.removal_request.by_manager && <p className="text-muted">{t("removal.byManagerNote")}</p>}
                   {m.removal_request.reason && <p className="text-muted">«{m.removal_request.reason}»</p>}
-                  <Button size="sm" variant="ghost" onClick={() => cancel(m)}>
-                    {t("removal.cancel")}
-                  </Button>
+                  {!m.removal_request.by_manager && (
+                    <Button size="sm" variant="ghost" onClick={() => cancel(m)}>
+                      {t("removal.cancel")}
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <Button size="sm" variant="danger" onClick={() => setTarget(m)}>

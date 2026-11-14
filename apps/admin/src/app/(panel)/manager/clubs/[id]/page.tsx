@@ -1,10 +1,12 @@
 "use client";
 
-import { ArrowLeft, Clock, ExternalLink, Layers, MapPin, MapPinOff, Phone, User } from "lucide-react";
+import { ArrowLeft, Clock, ExternalLink, LayoutGrid, Layers, MapPin, MapPinOff, Phone, User } from "lucide-react";
 import Link from "next/link";
 import { use } from "react";
 import { ZonesView, HoursView } from "@/components/club-offer";
+import { ClubSubscriptionInfo } from "@/components/club-subscription";
 import { ShareClub } from "@/components/share-club";
+import { ZoneLayoutView } from "@/components/zone-layout";
 import { Alert, Badge, Card, Heading, Spinner } from "@/components/ui";
 import { type MessageKey, useI18n } from "@/i18n/provider";
 import { fmtDateTime, fmtPublicId } from "@/lib/format";
@@ -52,7 +54,7 @@ export default function ManagerClubPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-        <section className="space-y-4">
+        <section className="min-w-0 space-y-4">
           <div className="flex items-center gap-2 font-display text-xl font-bold">
             <Layers className="h-5 w-5 text-accent" />
             {t("nav.zones")}
@@ -61,9 +63,33 @@ export default function ManagerClubPage({ params }: { params: Promise<{ id: stri
             </span>
           </div>
           <ZonesView zones={c.zones} />
+          {c.zones.some((z) => z.layout && z.devices_count) && (
+            <>
+              <div className="flex items-center gap-2 pt-2 font-display text-xl font-bold">
+                <LayoutGrid className="h-5 w-5 text-accent" />
+                {t("layout.title")}
+              </div>
+              {c.zones
+                .filter((z) => z.layout && z.devices_count)
+                .map((z) => (
+                  <Card key={z.id} className="space-y-3">
+                    <div className="flex items-center gap-2 font-bold">
+                      <span className="h-3 w-3 rounded-full" style={{ background: z.color ?? "#3a3f4b" }} />
+                      {z.name}
+                      <span className="text-sm font-normal text-muted">· {t("zone.devicesN", { n: z.devices_count! })}</span>
+                    </div>
+                    <ZoneLayoutView zone={z} decorLabel={(k) => t(`layout.decor.${k}` as MessageKey)} />
+                  </Card>
+                ))}
+            </>
+          )}
         </section>
 
         <aside className="space-y-4">
+          <Card className="space-y-2">
+            <div className="font-bold">{t("sub.title")}</div>
+            <ClubSubscriptionInfo s={c.subscription} />
+          </Card>
           <Card className="space-y-2">
             <div className="flex items-center gap-2 font-bold">
               <Clock className="h-4 w-4 text-accent" />
@@ -102,6 +128,12 @@ export default function ManagerClubPage({ params }: { params: Promise<{ id: stri
               <>
                 <div className="font-semibold">{[c.operator.first_name, c.operator.last_name].filter(Boolean).join(" ") || c.operator.username}</div>
                 <div className="font-mono text-xs text-muted">ID {fmtPublicId(c.operator.public_id)}</div>
+                {c.operator.phone && (
+                  <a href={`tel:${c.operator.phone}`} className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline">
+                    <Phone className="h-3.5 w-3.5" />
+                    {c.operator.phone}
+                  </a>
+                )}
                 <div className="text-xs text-muted">
                   {t("common.lastLogin")}: {c.operator.last_login_at ? fmtDateTime(c.operator.last_login_at, locale) : t("common.never")}
                 </div>

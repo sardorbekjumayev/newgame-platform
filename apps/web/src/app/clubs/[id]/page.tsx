@@ -6,6 +6,8 @@ import Link from "next/link";
 import { use } from "react";
 import { OpenBadge, PriceFrom } from "@/components/club-badges";
 import { ShareClub } from "@/components/share-club";
+import { ZoneLayoutView } from "@/components/zone-layout-view";
+import { BookingWidget } from "@/components/booking-widget";
 import { MapView } from "@/components/map/map-view";
 import { Card, Spinner } from "@/components/ui";
 import { type MessageKey, useI18n } from "@/i18n/provider";
@@ -70,8 +72,10 @@ export default function ClubPage({ params }: { params: Promise<{ id: string }> }
         </div>
       </div>
 
+      <BookingWidget clubId={c.id} />
+
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <section className="space-y-4">
+        <section className="min-w-0 space-y-4">
           <h2 className="font-display text-2xl font-bold">{t("catalog.zonesTitle")}</h2>
           {c.zones.length === 0 && <Card className="py-8 text-center text-muted">{t("catalog.noZones")}</Card>}
           {c.zones.map((z) => (
@@ -80,7 +84,7 @@ export default function ClubPage({ params }: { params: Promise<{ id: string }> }
                 <span className="h-8 w-1.5 rounded-full" style={{ background: z.color ?? "#3a3f4b" }} />
                 <div>
                   <div className="font-display text-lg font-bold">{z.name}</div>
-                  {z.description && <div className="text-sm text-muted">{z.description}</div>}
+                  <div className="text-sm text-muted">{[z.devices_count ? t("catalog.devicesN", { n: z.devices_count }) : null, z.description].filter(Boolean).join(" · ")}</div>
                 </div>
               </div>
               {z.tariffs.length === 0 ? (
@@ -109,6 +113,14 @@ export default function ClubPage({ params }: { params: Promise<{ id: string }> }
                   ))}
                 </ul>
               )}
+              {z.layout && z.devices_count ? (
+                <details className="group">
+                  <summary className="cursor-pointer select-none text-sm font-bold text-accent hover:underline">{t("catalog.layout")}</summary>
+                  <div className="mt-3">
+                    <ZoneLayoutView layout={z.layout} count={z.devices_count} decorLabel={(k) => t(`catalog.decor.${k}` as MessageKey)} />
+                  </div>
+                </details>
+              ) : null}
             </Card>
           ))}
         </section>

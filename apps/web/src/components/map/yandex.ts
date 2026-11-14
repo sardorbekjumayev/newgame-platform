@@ -37,7 +37,7 @@ const toLL = (p: LatLng) => [p.lat, p.lng];
 export const yandexMaps: MapProvider = {
   async create(container, opts) {
     const ymaps = await load(opts.locale);
-    const map = new ymaps.Map(container, { center: toLL(opts.center), zoom: opts.zoom, controls: ["zoomControl", "geolocationControl"] }, { suppressMapOpenBlock: true });
+    const map = new ymaps.Map(container, { center: toLL(opts.center), zoom: opts.zoom, controls: ["zoomControl"] }, { suppressMapOpenBlock: true });
 
     // Narx "pill" markerlari — designn/mobile-map.html uslubida.
     const pill = ymaps.templateLayoutFactory.createClass(
@@ -46,6 +46,7 @@ export const yandexMaps: MapProvider = {
     const markers = new ymaps.GeoObjectCollection();
     map.geoObjects.add(markers);
     let pin: YMaps = null;
+    let halo: YMaps = null;
 
     const emitBounds = () => {
       const [[s, w], [n, e]] = map.getBounds();
@@ -79,8 +80,12 @@ export const yandexMaps: MapProvider = {
       setCenter(center, zoom) {
         map.setCenter(toLL(center), zoom ?? map.getZoom(), { duration: 300 });
       },
-      setPin(position) {
+      setPin(position, accuracyM) {
         if (pin) map.geoObjects.remove(pin);
+        if (halo) map.geoObjects.remove(halo);
+        // Aniqlik doirasi (GPS radiusi, metr)
+        halo = position && accuracyM ? new ymaps.Circle([toLL(position), accuracyM], {}, { fillColor: "#C6FF3D22", strokeColor: "#C6FF3D88", strokeWidth: 1, interactivityModel: "default#transparent" }) : null;
+        if (halo) map.geoObjects.add(halo);
         pin = position ? new ymaps.Placemark(toLL(position), {}, { preset: "islands#circleDotIcon", iconColor: "#C6FF3D" }) : null;
         if (pin) map.geoObjects.add(pin);
       },
