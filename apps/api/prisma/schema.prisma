@@ -1,0 +1,360 @@
+// Sxema: docs/02-DATABASE.md. Prisma qo'llamaydigan qismlar (PostGIS, exclusion, partial index)
+// migratsiya SQL fayllarida qo'lda yoziladi.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- 3.1 Identity va RBAC ----------
+// Maydon nomlari DB bilan bir xil (snake_case) — API javoblari ham snake_case.
+
+model users {
+  id                    String    @id @db.Uuid
+  type                  String // CUSTOMER | STAFF | PLATFORM
+  phone                 String?   @unique // E.164; platforma adminida bo'lmasligi mumkin
+  phone_verified_at     DateTime? @db.Timestamptz
+  email                 String?   @unique @db.Citext
+  username              String?   @unique @db.Citext // xodim logini (super admin beradi)
+  public_id             String?   @unique // 7 xonali User ID — operator menejerga aytadi
+  email_verified_at     DateTime? @db.Timestamptz
+  password_hash         String?
+  must_change_password  Boolean   @default(false) // admin parolni tiklagan: keyingi kirishda yangi parol shart
+  first_name            String?
+  last_name             String?
+  avatar_file_id        String?   @db.Uuid
+  language              String    @default("uz")
+  status                String    @default("ACTIVE")
+  last_login_at         DateTime? @db.Timestamptz
+  no_show_count         Int       @default(0)
+  booking_blocked_until DateTime? @db.Timestamptz
+  totp_secret_enc       String?
+  totp_enabled          Boolean   @default(false)
+  notification_prefs    Json      @default("{}")
+  created_at            DateTime  @default(now()) @db.Timestamptz
+  updated_at            DateTime  @updatedAt @db.Timestamptz
+  deleted_at            DateTime? @db.Timestamptz
+
+  user_roles     user_roles[]     @relation("user_roles_user")
+  refresh_tokens refresh_tokens[]
+  consents       consents[]
+  device_tokens  device_tokens[]
+  managed_clubs  manager_clubs[]
+  link_requests  manager_link_requests[] @relation("link_request_manager")
+}
+
+model roles {
+  id               String             @id @db.Uuid
+  code             String             @unique
+  name             String?
+  scope_type       String // PLATFORM | CLUB | BRANCH
+  is_system        Boolean            @default(false)
+  club_id          String?            @db.Uuid // custom rol (klub doirasida)
+  created_at       DateTime           @default(now()) @db.Timestamptz
+  updated_at       DateTime           @updatedAt @db.Timestamptz
+  role_permissions role_permissions[]
+  user_roles       user_roles[]
+}
+
+model permissions {
+  id               String             @id @db.Uuid
+  code             String             @unique
+  description      String?
+  created_at       DateTime           @default(now()) @db.Timestamptz
+  updated_at       DateTime           @updatedAt @db.Timestamptz
+  role_permissions role_permissions[]
+}
+
+model role_permissions {
+  role_id       String      @db.Uuid
+  permission_id String      @db.Uuid
+  role          roles       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission    permissions @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([role_id, permission_id])
+}
+
+model user_roles {
+  id         String    @id @db.Uuid
+  user_id    String    @db.Uuid
+  role_id    String    @db.Uuid
+  club_id    String?   @db.Uuid
+  branch_id  String?   @db.Uuid
+  granted_by String?   @db.Uuid
+  expires_at DateTime? @db.Timestamptz
+  created_at DateTime  @default(now()) @db.Timestamptz
+  updated_at DateTime  @updatedAt @db.Timestamptz
+  user       users     @relation("user_roles_user", fields: [user_id], references: [id], onDelete: Cascade)
+  role       roles     @relation(fields: [role_id], references: [id])
+
+  @@index([user_id])
+}
+
+model refresh_tokens {
+  id                String    @id @db.Uuid
+  user_id           String    @db.Uuid
+  family_id         String    @db.Uuid
+  token_hash        String    @unique
+  device_info       Json?
+  ip                String?
+  expires_at        DateTime  @db.Timestamptz
+  revoked_at        DateTime? @db.Timestamptz
+  replaced_by_id    String?   @db.Uuid
+  reuse_detected_at DateTime? @db.Timestamptz
+  created_at        DateTime  @default(now()) @db.Timestamptz
+  updated_at        DateTime  @updatedAt @db.Timestamptz
+  user              users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([family_id])
+}
+
+model otp_requests {
+  id         String   @id @db.Uuid
+  phone      String
+  purpose    String
+  ip         String?
+  status     String // SENT | VERIFIED | FAILED | EXPIRED
+  attempts   Int      @default(0)
+  expires_at DateTime @db.Timestamptz
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @updatedAt @db.Timestamptz
+
+  @@index([phone, created_at])
+}
+
+model consents {
+  id            String   @id @db.Uuid
+  user_id       String   @db.Uuid
+  document_type String // TERMS | PRIVACY
+  version       String
+  accepted_at   DateTime @db.Timestamptz
+  ip            String?
+  created_at    DateTime @default(now()) @db.Timestamptz
+  updated_at    DateTime @updatedAt @db.Timestamptz
+  user          users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model device_tokens {
+  id           String    @id @db.Uuid
+  user_id      String    @db.Uuid
+  platform     String // ios | android | web
+  token        String    @unique
+  app_version  String?
+  locale       String?
+  last_seen_at DateTime? @db.Timestamptz
+  disabled_at  DateTime? @db.Timestamptz
+  created_at   DateTime  @default(now()) @db.Timestamptz
+  updated_at   DateTime  @updatedAt @db.Timestamptz
+  user         users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+// ---------- 3.8 Audit va idempotency ----------
+
+model audit_logs {
+  id          String   @id @db.Uuid
+  actor_id    String?  @db.Uuid
+  actor_role  String?
+  club_id     String?  @db.Uuid
+  action      String
+  target_type String
+  target_id   String?
+  old_value   Json?
+  new_value   Json?
+  ip          String?
+  user_agent  String?
+  request_id  String?
+  at          DateTime @default(now()) @db.Timestamptz
+
+  @@index([club_id, at(sort: Desc)])
+  @@index([actor_id, at(sort: Desc)])
+  @@index([target_type, target_id])
+}
+
+model idempotency_keys {
+  id              String   @id @db.Uuid
+  key             String
+  user_id         String   @db.Uuid
+  route           String
+  request_hash    String
+  response_status Int?
+  response_body   Json?
+  expires_at      DateTime @db.Timestamptz
+  created_at      DateTime @default(now()) @db.Timestamptz
+  updated_at      DateTime @updatedAt @db.Timestamptz
+
+  @@unique([key, user_id, route])
+}
+
+
+// ---------- Telegram (login kodi) ----------
+
+model telegram_links {
+  id         String   @id @db.Uuid
+  phone      String   @unique
+  chat_id    BigInt   @unique
+  tg_user_id BigInt
+  username   String?
+  first_name String?
+  linked_at  DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @updatedAt @db.Timestamptz
+}
+
+// ---------- Klublar, arizalar, menejerlar ----------
+
+/** Landing formasi orqali kelgan ulanish arizasi (akkauntsiz). */
+model club_applications {
+  id             String    @id @db.Uuid
+  full_name      String
+  phone          String
+  club_name      String
+  city           String?
+  address        String?
+  devices_count  Int?
+  branches_count Int?
+  telegram       String?
+  comment        String?
+  language       String    @default("uz")
+  status         String    @default("NEW") // NEW | CONTACTED | APPROVED | REJECTED
+  admin_note     String?
+  handled_by     String?   @db.Uuid
+  handled_at     DateTime? @db.Timestamptz
+  created_at     DateTime  @default(now()) @db.Timestamptz
+  updated_at     DateTime  @updatedAt @db.Timestamptz
+  clubs          clubs[]
+
+  @@index([status, created_at(sort: Desc)])
+  @@index([phone])
+}
+
+/** Klub nuqtasi (filial). Har biri o'z operatori (user_roles OPERATOR, club_id) bilan boshqariladi. */
+model clubs {
+  id             String             @id @db.Uuid
+  name           String
+  city           String
+  address        String?
+  phone          String?
+  status         String             @default("ACTIVE") // ACTIVE | SUSPENDED
+  // Xaritadagi joy — operator birinchi kirishda belgilaydi (WGS84)
+  latitude         Float?
+  longitude        Float?
+  location_set_at  DateTime?          @db.Timestamptz
+  // Ish vaqti: { always_open?: true, mon: [{open:"10:00",close:"02:00"}], ... } — bo'sh massiv = dam olish kuni;
+  // close <= open bo'lsa keyingi kunga o'tadi. Vaqt Asia/Tashkent bo'yicha. null — hali kiritilmagan.
+  working_hours    Json?
+  application_id String?            @db.Uuid
+  created_by     String?            @db.Uuid
+  created_at     DateTime           @default(now()) @db.Timestamptz
+  updated_at     DateTime           @updatedAt @db.Timestamptz
+  application    club_applications? @relation(fields: [application_id], references: [id], onDelete: SetNull)
+  managers       manager_clubs[]
+  link_requests  manager_link_requests[]
+  unlink_requests manager_unlink_requests[]
+  zones          zones[]
+  tariffs        tariffs[]
+
+  @@index([application_id])
+}
+
+/** Menejer ↔ klub: menejer operator User ID sini kiritganda bog'lanadi. */
+model manager_clubs {
+  manager_id String   @db.Uuid
+  club_id    String   @db.Uuid
+  linked_at  DateTime @default(now()) @db.Timestamptz
+  manager    users    @relation(fields: [manager_id], references: [id], onDelete: Cascade)
+  club       clubs    @relation(fields: [club_id], references: [id], onDelete: Cascade)
+
+  @@id([manager_id, club_id])
+  @@index([club_id])
+}
+
+/**
+ * Menejer → klub bog'lanish so'rovi: menejer operator User ID sini kiritadi, operator panelida 6 xonali kod
+ * ko'rinadi, operator kodni menejerga aytadi, menejer kodni kiritsa manager_clubs yaratiladi.
+ */
+model manager_link_requests {
+  id          String   @id @db.Uuid
+  manager_id  String   @db.Uuid
+  club_id     String   @db.Uuid
+  operator_id String   @db.Uuid
+  code        String // 6 raqam, faqat operatorga ko'rsatiladi; qisqa muddatli
+  attempts    Int      @default(0)
+  status      String   @default("PENDING") // PENDING | CONFIRMED | REJECTED | CANCELLED | FAILED
+  expires_at  DateTime @db.Timestamptz
+  created_at  DateTime @default(now()) @db.Timestamptz
+  updated_at  DateTime @updatedAt @db.Timestamptz
+  manager     users    @relation("link_request_manager", fields: [manager_id], references: [id], onDelete: Cascade)
+  club        clubs    @relation(fields: [club_id], references: [id], onDelete: Cascade)
+
+  @@index([club_id, status])
+  @@index([manager_id, status])
+}
+
+/**
+ * Operator menejerni klubdan olib tashlashni so'raydi → super admin operator va menejer bilan bog'lanib
+ * tasdiqlasa manager_clubs o'chiriladi. Bitta klub+menejer uchun bittadan ortiq PENDING bo'lmaydi (partial unique, migratsiyada).
+ */
+model manager_unlink_requests {
+  id           String    @id @db.Uuid
+  club_id      String    @db.Uuid
+  manager_id   String    @db.Uuid
+  requested_by String    @db.Uuid // operator
+  reason       String?
+  status       String    @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELLED
+  admin_note   String?
+  handled_by   String?   @db.Uuid
+  handled_at   DateTime? @db.Timestamptz
+  created_at   DateTime  @default(now()) @db.Timestamptz
+  updated_at   DateTime  @updatedAt @db.Timestamptz
+  club         clubs     @relation(fields: [club_id], references: [id], onDelete: Cascade)
+
+  @@index([status, created_at(sort: Desc)])
+  @@index([club_id, manager_id])
+}
+
+/** Klub zonasi (VIP, Umumiy, PlayStation ...). Operator boshqaradi. O'chirish — soft (deleted_at). */
+model zones {
+  id          String    @id @db.Uuid
+  club_id     String    @db.Uuid
+  name        String
+  description String?
+  color       String? // UI belgisi, masalan "#C6FF3D"
+  sort_order  Int       @default(0)
+  created_at  DateTime  @default(now()) @db.Timestamptz
+  updated_at  DateTime  @updatedAt @db.Timestamptz
+  deleted_at  DateTime? @db.Timestamptz
+  club        clubs     @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  tariffs     tariffs[]
+
+  @@index([club_id])
+}
+
+/**
+ * Tarif — zonaga tegishli. HOURLY: price = 1 soat narxi; PACKAGE: price = duration_minutes uchun qat'iy narx.
+ * valid_from/valid_to (HH:MM, ixtiyoriy) — tarif amal qiladigan vaqt oralig'i (masalan tungi paket 22:00–08:00).
+ * Pul — BIGINT tiyin.
+ */
+model tariffs {
+  id               String    @id @db.Uuid
+  club_id          String    @db.Uuid
+  zone_id          String    @db.Uuid
+  name             String
+  type             String // HOURLY | PACKAGE
+  price            BigInt
+  duration_minutes Int?
+  valid_from       String?
+  valid_to         String?
+  is_active        Boolean   @default(true)
+  sort_order       Int       @default(0)
+  created_at       DateTime  @default(now()) @db.Timestamptz
+  updated_at       DateTime  @updatedAt @db.Timestamptz
+  deleted_at       DateTime? @db.Timestamptz
+  club             clubs     @relation(fields: [club_id], references: [id], onDelete: Cascade)
+  zone             zones     @relation(fields: [zone_id], references: [id], onDelete: Cascade)
+
+  @@index([club_id])
+  @@index([zone_id])
+}

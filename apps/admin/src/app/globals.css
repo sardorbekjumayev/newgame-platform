@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/* Dizayn tokenlari — designn/ maketlaridan (qorong'i tema, lime aksent). */
+@theme inline {
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --font-display: var(--font-chakra), var(--font-manrope), sans-serif;
+
+  --color-bg: #0e0f13;
+  --color-surface: #171922;
+  --color-surface-2: #1e212b;
+  --color-surface-3: #232734;
+  --color-line: #2b3040;
+  --color-line-soft: #262a36;
+  --color-fg: #edeef2;
+  --color-muted: #a3a9ba;
+  --color-accent: #c6ff3d;
+  --color-accent-hover: #d4ff6b;
+  --color-on-accent: #0e0f13;
+  --color-warn: #ffb020;
+  --color-danger: #ff7a7a;
+  --color-danger-soft: #ff9c9c;
+}
+
+html {
+  background: var(--color-bg);
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+/* Yandex xarita: qorong'i tema (tile'larni invert) va narx "pill" markerlari. */
+.gc-map [class*="ground-pane"] {
+  filter: invert(0.92) hue-rotate(180deg) saturate(0.6) brightness(0.9);
+}
+.gc-map [class*="copyrights-pane"] {
+  opacity: 0.6;
+}
+.gc-pin {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* Pastki uchi aynan klub koordinatasida turadi */
+  transform: translate(-50%, calc(-100% - 10px));
+  white-space: nowrap;
+  padding: 7px 12px 7px 9px;
+  border-radius: 999px;
+  background: #0e0f13;
+  border: 2px solid var(--color-accent);
+  color: #fff;
+  font: 800 14px var(--font-sans);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55), 0 0 0 4px rgba(198, 255, 61, 0.18);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.gc-pin::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 8px var(--color-accent);
+}
+.gc-pin::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  transform: translateX(-50%);
+  border: 8px solid transparent;
+  border-bottom: 0;
+  border-top: 10px solid var(--color-accent);
+}
+.gc-pin:hover {
+  transform: translate(-50%, calc(-100% - 10px)) scale(1.08);
+  z-index: 10;
+}
+.gc-pin--active {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  transform: translate(-50%, calc(-100% - 10px)) scale(1.12);
+}
+.gc-pin--active::before {
+  background: var(--color-on-accent);
+  box-shadow: none;
+}

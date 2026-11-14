@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ng
+      POSTGRES_PASSWORD: ng
+      POSTGRES_DB: newgame
+    ports: ["55444:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+  redis:
+    image: redis:7-alpine
+    ports: ["56390:6379"]
+volumes:
+  pgdata: {}
