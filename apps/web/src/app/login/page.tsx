@@ -1,5 +1,6 @@
 "use client";
 
+import { useTelegram } from "@/lib/telegram";
 import type { LoginResult, SendOtpResult } from "@ng/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -34,7 +35,14 @@ function Login() {
   const [sent, setSent] = useState<SendOtpResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const fromBooking = useSearchParams().get("reason") === "book";
+  const params = useSearchParams();
+  const fromBooking = params.get("reason") === "book";
+  const { isTg } = useTelegram();
+
+  // Telegram Mini App ichida — kod emas, Telegram orqali kirish
+  useEffect(() => {
+    if (isTg) router.replace(`/tg?next=${encodeURIComponent(params.get("next") ?? "/map")}`);
+  }, [isTg, router, params]);
 
   useEffect(() => {
     // Kirgan foydalanuvchi — faqat ochilganda (verify'dan keyingi yo'naltirishni buzmaslik uchun)

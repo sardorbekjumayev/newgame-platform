@@ -39,6 +39,7 @@ export const envSchema = z.object({
   TELEGRAM_MODE: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['polling', 'webhook']).default('polling')),
   TELEGRAM_WEBHOOK_URL: optional(z.string().url()),
   TELEGRAM_WEBHOOK_SECRET: optional(z.string().min(16)),
+  TELEGRAM_WEBAPP_URL: optional(z.string().url()), // Mini App (https, masalan https://zonup.uz) — bot menyu tugmasi /tg ga ochadi
   // Rate limit (docs/01-API.md §Rate limit): kalit — user id yoki IP, Redis'da (barcha instansiyalar uchun umumiy)
   RATE_LIMIT_GLOBAL: rateLimit('300/60'),
   RATE_LIMIT_PUBLIC: rateLimit('120/60'),

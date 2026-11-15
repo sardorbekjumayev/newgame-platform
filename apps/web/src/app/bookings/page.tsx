@@ -1,26 +1,23 @@
 "use client";
 
 import { formatMoney } from "@ng/types";
-import { CalendarCheck, MapPin } from "lucide-react";
+import { CalendarCheck, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
+import { BookingTicket, type TicketBooking } from "@/components/booking-ticket";
+import { Alert, Button, Card, Modal, Spinner, cx } from "@/components/ui";
 import { type MessageKey, useErrorText, useI18n } from "@/i18n/provider";
 import { fmtDate, fmtTime } from "@/lib/format";
 import { session, useAuth } from "@/lib/session";
 import { useApi } from "@/lib/use-api";
 
-type Booking = {
-  id: string; code: string; status: string; start_at: string; end_at: string; total_amount: number; can_cancel: boolean;
-  club: { id: string; name: string; address: string | null; phone: string | null };
-  devices: { zone: string; color: string | null; seat_no: number }[];
-};
-const TONE: Record<string, "green" | "violet" | "neutral" | "red" | "amber"> = { CONFIRMED: "green", CHECKED_IN: "violet", COMPLETED: "neutral", CANCELLED: "red", NO_SHOW: "amber" };
+type Booking = TicketBooking & { can_cancel: boolean };
 
 /** Mijoz: mening bronlarim — kelgusi va o'tganlar, bekor qilish (kamida 1 soat oldin). */
 export default function BookingsPage() {
   const { t, locale } = useI18n();
+  const [openId, setOpenId] = useState<string | null>(null);
   const errorText = useErrorText();
   const { me, loading } = useAuth();
   const router = useRouter();
@@ -47,52 +44,37 @@ export default function BookingsPage() {
   const upcoming = (list.data ?? []).filter((b) => ["CONFIRMED", "CHECKED_IN"].includes(b.status) && new Date(b.end_at).getTime() > now).reverse();
   const past = (list.data ?? []).filter((b) => !upcoming.includes(b));
 
+  const live = (b: Booking) => b.status === "CONFIRMED" || b.status === "CHECKED_IN";
+  const opened = (list.data ?? []).find((b) => b.id === openId) ?? null;
+
+  // Ixcham qator — bosilsa to'liq chipta ochiladi
   const card = (b: Booking) => (
-    <Card key={b.id} className="space-y-3">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <Link href={`/clubs/${b.club.id}`} className="font-display text-lg font-bold hover:text-accent">
-            {b.club.name}
-          </Link>
-          {b.club.address && (
-            <div className="flex items-center gap-1 text-sm text-muted">
-              <MapPin className="h-3.5 w-3.5" /> {b.club.address}
-            </div>
-          )}
+    <button
+      key={b.id}
+      type="button"
+      onClick={() => setOpenId(b.id)}
+      className={cx(
+        "flex w-full items-center gap-4 rounded-2xl border bg-surface p-4 text-left transition hover:border-accent/50",
+        live(b) ? "border-line-soft" : "border-line-soft opacity-60",
+      )}
+    >
+      <div className="w-16 shrink-0 text-center">
+        <div className="text-xs text-muted">{fmtDate(b.start_at, t as never)}</div>
+        <div className="font-display text-xl font-bold tabular-nums">{fmtTime(b.start_at)}</div>
+      </div>
+      <div className="min-w-0 flex-1 border-l border-dashed border-line pl-4">
+        <div className="truncate font-bold">{b.club.name}</div>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+          <span className="font-mono font-bold tracking-widest text-accent">{b.code}</span>
+          <span>· {b.devices.length} {t("ticket.seatsN")}</span>
+          <span>· {formatMoney(b.total_amount, locale)}</span>
         </div>
-        <Badge tone={TONE[b.status] ?? "neutral"}>{t(`booking.status.${b.status}` as MessageKey)}</Badge>
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <span className="font-semibold">
-          {fmtDate(b.start_at, t as never)}, {fmtTime(b.start_at)}–{fmtTime(b.end_at)}
-        </span>
-        <span className="text-muted">
-          {t("booking.code")}: <b className="font-mono text-fg">{b.code}</b>
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-1.5 text-xs">
-        {b.devices.map((d, i) => (
-          <span key={i} className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-2 py-1 font-semibold">
-            <span className="h-2 w-2 rounded-full" style={{ background: d.color ?? "#3a3f4b" }} />
-            {d.zone} #{d.seat_no}
-          </span>
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line-soft pt-3">
-        <div>
-          <span className="font-display text-lg font-bold text-accent">{formatMoney(b.total_amount, locale)}</span>
-          <span className="ml-2 text-xs text-muted">{t("booking.payAtClub")}</span>
-        </div>
-        {b.status === "CONFIRMED" &&
-          (b.can_cancel ? (
-            <Button size="sm" variant="secondary" onClick={() => cancel(b)}>
-              {t("booking.cancel")}
-            </Button>
-          ) : (
-            new Date(b.start_at).getTime() > now && <span className="text-xs text-muted">{t("booking.cancelClosed")}</span>
-          ))}
-      </div>
-    </Card>
+      <span className={cx("shrink-0 rounded-full px-2.5 py-1 text-xs font-bold", STATUS_TONE[b.status] ?? STATUS_TONE.COMPLETED)}>
+        {t(`booking.status.${b.status}` as MessageKey)}
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+    </button>
   );
 
   return (
@@ -102,7 +84,7 @@ export default function BookingsPage() {
       </h1>
       {error && <Alert>{error}</Alert>}
       {list.error && <Alert>{list.error}</Alert>}
-      <section className="space-y-3">
+      <section className="space-y-2.5">
         <h2 className="font-bold text-muted">{t("booking.upcoming", { n: upcoming.length, max: 5 })}</h2>
         {upcoming.length ? upcoming.map(card) : (
           <Card className="py-10 text-center text-muted">
@@ -114,11 +96,44 @@ export default function BookingsPage() {
         )}
       </section>
       {past.length > 0 && (
-        <section className="space-y-3">
+        <section className="space-y-2.5">
           <h2 className="font-bold text-muted">{t("booking.past")}</h2>
           {past.map(card)}
         </section>
       )}
+      {opened && (
+        <Modal title={t("ticket.label")} onClose={() => setOpenId(null)}>
+          <BookingTicket
+            b={opened}
+            footer={
+              opened.status === "CONFIRMED" &&
+              (opened.can_cancel ? (
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      await cancel(opened);
+                    }}
+                  >
+                    {t("booking.cancel")}
+                  </Button>
+                </div>
+              ) : (
+                new Date(opened.start_at).getTime() > now && <p className="text-right text-xs text-muted">{t("booking.cancelClosed")}</p>
+              ))
+            }
+          />
+        </Modal>
+      )}
     </main>
   );
 }
+
+const STATUS_TONE: Record<string, string> = {
+  CONFIRMED: "bg-emerald-500/15 text-emerald-400",
+  CHECKED_IN: "bg-violet-500/15 text-violet-300",
+  COMPLETED: "bg-white/10 text-muted",
+  CANCELLED: "bg-red-500/15 text-red-400",
+  NO_SHOW: "bg-amber-500/15 text-amber-300",
+};

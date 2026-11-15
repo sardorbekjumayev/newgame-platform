@@ -73,3 +73,10 @@ export class UpdateMeDto {
   @IsEmail()
   email?: string | null;
 }
+
+export class TelegramWebappDto {
+  @ApiProperty({ description: 'Telegram.WebApp.initData' })
+  @IsString()
+  @MaxLength(4096)
+  init_data: string;
+}

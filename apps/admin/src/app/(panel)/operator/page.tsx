@@ -1,10 +1,10 @@
 "use client";
 
-import { BarChart3, Eye, KeyRound, MapPin, Phone } from "lucide-react";
+import { Eye, KeyRound, MapPin, Phone } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { CopyButton } from "@/components/credentials";
-import { ClubSubscriptionInfo } from "@/components/club-subscription";
+import { NewBookings } from "@/components/new-bookings";
 import { ShareClub } from "@/components/share-club";
 import { Alert, Badge, Button, Card, Heading } from "@/components/ui";
 import { type MessageKey, useErrorText, useI18n } from "@/i18n/provider";
@@ -20,7 +20,7 @@ export default function OperatorPage() {
   const { data, reload } = useOperator();
   const [actionError, setActionError] = useState<string | null>(null);
   if (!data) return null;
-  const { me, club, managers, link_requests, subscription } = data;
+  const { me, club, managers, link_requests } = data;
 
   async function reject(id: string) {
     if (!confirm(t("operator.rejectConfirm"))) return;
@@ -60,11 +60,7 @@ export default function OperatorPage() {
         </div>
       </div>
 
-      <Card className="space-y-2">
-        <div className="font-bold">{t("sub.title")}</div>
-        <ClubSubscriptionInfo s={subscription} />
-        {subscription && subscription.status !== "TRIAL" && subscription.status !== "ACTIVE" && <p className="text-xs text-muted">{t("sub.operatorPayHint")}</p>}
-      </Card>
+      <NewBookings />
 
       {actionError && <Alert>{actionError}</Alert>}
       {link_requests.length > 0 && (
@@ -110,10 +106,6 @@ export default function OperatorPage() {
         </Link>
       </div>
 
-      <Card className="flex items-center gap-4 border border-dashed border-line py-10 text-muted">
-        <BarChart3 className="h-8 w-8 shrink-0" />
-        <span>{t("operator.soon")}</span>
-      </Card>
     </div>
   );
 }

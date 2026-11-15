@@ -124,3 +124,9 @@ body {
     radial-gradient(520px 240px at 0% 0%, rgba(198, 255, 61, 0.14), transparent 70%),
     radial-gradient(420px 220px at 100% 0%, rgba(120, 140, 255, 0.08), transparent 70%);
 }
+
+/* Telegram Mini App: footer va sayt kirish tugmalari kerak emas */
+html[data-tg] footer,
+html[data-tg] [data-hide-in-tg] {
+  display: none !important;
+}

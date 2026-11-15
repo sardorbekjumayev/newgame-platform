@@ -29,19 +29,24 @@ const SEAT_STYLE: Record<SeatState, string> = {
 export function ZoneLayoutView({ layout, count, decorLabel, seatState, onSeat }: { layout: ZoneLayout; count: number; decorLabel: (k: DecorKind) => string; seatState?: (n: number) => SeatState; onSeat?: (n: number) => void }) {
   const inside = (c: { x: number; y: number }) => c.x < layout.cols && c.y < layout.rows;
   const seats = layout.seats.filter((s) => s.n <= count && inside(s));
+  const decor = layout.decor.filter(inside);
+  // Ko'rinish faqat ishlatilgan qism bilan cheklanadi (bo'sh qator/ustunlar kesiladi)
+  const used = [...seats, ...decor];
+  const cols = used.length ? Math.max(...used.map((c) => c.x)) + 1 : layout.cols;
+  const rows = used.length ? Math.max(...used.map((c) => c.y)) + 1 : layout.rows;
   return (
-    <div className="overflow-auto rounded-2xl border border-line bg-surface p-2">
+    <div className="flex justify-center overflow-auto rounded-2xl border border-line bg-surface p-3">
       <div
         className="relative"
         style={{
-          width: layout.cols * CELL,
-          height: layout.rows * CELL,
+          width: cols * CELL,
+          height: rows * CELL,
           backgroundImage: "radial-gradient(circle, var(--color-line) 1.5px, transparent 1.5px)",
           backgroundSize: `${CELL}px ${CELL}px`,
           backgroundPosition: `${CELL / 2}px ${CELL / 2}px`,
         }}
       >
-        {layout.decor.filter(inside).map((d, i) => {
+        {decor.map((d, i) => {
           const Icon = ICON[d.kind] ?? Footprints;
           const full = d.kind === "WALL" || d.kind === "AISLE";
           return (

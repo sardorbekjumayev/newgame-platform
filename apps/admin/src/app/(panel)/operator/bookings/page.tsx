@@ -1,7 +1,7 @@
 "use client";
 
 import { formatMoney } from "@ng/types";
-import { CalendarDays, Check, Phone, UserX, X } from "lucide-react";
+import { CalendarDays, Check, Phone, Undo2, UserX, X } from "lucide-react";
 import { useState } from "react";
 import { Alert, Badge, Button, Card, Chip, Heading, Spinner } from "@/components/ui";
 import { type MessageKey, useErrorText, useI18n } from "@/i18n/provider";
@@ -31,7 +31,7 @@ export default function OperatorBookingsPage() {
   const rows = list.data?.bookings ?? [];
   const live = rows.filter((b) => ["CONFIRMED", "CHECKED_IN"].includes(b.status));
 
-  async function act(b: Booking, action: "check-in" | "no-show" | "cancel") {
+  async function act(b: Booking, action: "check-in" | "no-show" | "cancel" | "undo-check-in") {
     if (action !== "check-in" && !confirm(t(`opBooking.confirm.${action}` as MessageKey))) return;
     setBusy(b.id);
     setError(null);
@@ -72,7 +72,7 @@ export default function OperatorBookingsPage() {
           <div className="space-y-2">
             {rows.map((b) => {
               const name = [b.customer.first_name, b.customer.last_name].filter(Boolean).join(" ") || t("opBooking.noName");
-              const started = new Date(b.start_at).getTime() <= now;
+              const started = new Date(b.start_at).getTime() + 10 * 60_000 <= now; // "kelmadi" — boshlanishdan 10 daqiqa keyin
               return (
                 <Card key={b.id} className="flex flex-wrap items-center gap-x-5 gap-y-3">
                   <div className="w-24 shrink-0">
@@ -102,6 +102,13 @@ export default function OperatorBookingsPage() {
                     <div className="font-bold tabular-nums">{formatMoney(b.total_amount, locale)}</div>
                     <Badge tone={TONE[b.status] ?? "neutral"}>{t(`opBooking.status.${b.status}` as MessageKey)}</Badge>
                   </div>
+                  {b.status === "CHECKED_IN" && (
+                    <div className="flex w-full justify-end sm:w-auto">
+                      <Button size="sm" variant="ghost" loading={busy === b.id} onClick={() => act(b, "undo-check-in")}>
+                        <Undo2 className="h-4 w-4" /> {t("opBooking.undo")}
+                      </Button>
+                    </div>
+                  )}
                   {b.status === "CONFIRMED" && (
                     <div className="flex w-full flex-wrap justify-end gap-1 sm:w-auto">
                       <Button size="sm" loading={busy === b.id} onClick={() => act(b, "check-in")}>

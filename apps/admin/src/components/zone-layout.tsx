@@ -207,7 +207,16 @@ export function resolveLayout(saved: ZoneLayout | null | undefined, count: numbe
 }
 
 /** Faqat ko'rish: zona sxemasi (menejer paneli). Saqlanmagan bo'lsa — null qaytaradi. */
-export function ZoneLayoutView({ zone, decorLabel }: { zone: { id: string; devices_count: number | null; layout?: ZoneLayout | null }; decorLabel: (k: DecorKind) => string }) {
+export function ZoneLayoutView({
+  zone,
+  decorLabel,
+  highlight,
+}: {
+  zone: { id: string; devices_count: number | null; layout?: ZoneLayout | null };
+  decorLabel: (k: DecorKind) => string;
+  /** Belgilangan o'rindiqlar (masalan, bron qilinganlar) — qolganlari xira. */
+  highlight?: number[];
+}) {
   if (!zone.layout || !zone.devices_count) return null;
   const { layout } = resolveLayout(zone.layout, zone.devices_count);
   return (
@@ -216,7 +225,10 @@ export function ZoneLayoutView({ zone, decorLabel }: { zone: { id: string; devic
         <DecorCell key={`d${i}`} d={d} label={decorLabel(d.kind)} />
       ))}
       {layout.seats.map((s) => (
-        <SeatButton key={s.n} tile={{ id: String(s.n), name: String(s.n) }} className="absolute cursor-default" style={{ left: s.x * SEAT_CELL + 4, top: s.y * SEAT_CELL + 4 }} />
+        <SeatButton
+          key={s.n}
+          tile={{ id: String(s.n), name: String(s.n), tone: highlight ? (highlight.includes(s.n) ? "border-accent bg-accent/25 text-accent ring-2 ring-accent" : "border-line text-muted opacity-40") : undefined }}
+          className="absolute cursor-default" style={{ left: s.x * SEAT_CELL + 4, top: s.y * SEAT_CELL + 4 }} />
       ))}
     </RoomGrid>
   );

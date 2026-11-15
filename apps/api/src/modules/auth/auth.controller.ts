@@ -4,8 +4,9 @@ import type { Request } from 'express';
 import { AuthUser, CurrentUser, Public } from '../../common/decorators/auth.decorators';
 import { clientIp, userAgent } from '../../common/utils/request';
 import { AuthService } from './auth.service';
-import { LoginDto, RefreshDto, SendOtpDto, SetPasswordDto, UpdateMeDto, VerifyOtpDto } from './dto/auth.dto';
+import { LoginDto, RefreshDto, TelegramWebappDto, SendOtpDto, SetPasswordDto, UpdateMeDto, VerifyOtpDto } from './dto/auth.dto';
 import { OtpService } from './otp.service';
+import { TelegramWebappService } from './telegram-webapp.service';
 import { TokenService } from './token.service';
 import { RateLimit } from '../../common/rate-limit/rate-limit.decorators';
 
@@ -22,6 +23,7 @@ export class AuthController {
   constructor(
     private readonly otp: OtpService,
     private readonly auth: AuthService,
+    private readonly tgWebapp: TelegramWebappService,
     private readonly tokens: TokenService,
   ) {}
 
@@ -42,6 +44,15 @@ export class AuthController {
   async verifyOtp(@Body() dto: VerifyOtpDto, @Req() req: Request) {
     await this.otp.verify(dto.phone, dto.code);
     return this.auth.loginWithPhone(dto.phone, meta(req, dto.device));
+  }
+
+  @RateLimit('sensitive')
+  @Public()
+  @Post('telegram-webapp')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Telegram Mini App: initData bilan kirish (raqam botda ulashilmagan bo\'lsa need_contact)' })
+  telegramWebapp(@Body() dto: TelegramWebappDto, @Req() req: Request) {
+    return this.tgWebapp.login(dto.init_data, meta(req, { platform: 'telegram-webapp' }));
   }
 
   @RateLimit('sensitive')

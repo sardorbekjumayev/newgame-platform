@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CalendarDays, Clock, CreditCard, Package, Eye, Handshake, LayoutDashboard, LayoutGrid, Layers, LogOut, type LucideIcon, MapPinned, Menu, UserMinus, Users, X } from "lucide-react";
+import { Building2, CalendarDays, CalendarPlus, Clock, CreditCard, Package, Eye, Handshake, LayoutDashboard, LayoutGrid, Layers, LogOut, type LucideIcon, MapPinned, Menu, UserMinus, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -27,12 +27,13 @@ const NAV: Record<PanelKind, NavItem[]> = {
   ],
   operator: [
     { href: "/operator", label: "nav.myClub", icon: Building2, exact: true },
+    { href: "/operator/walk-in", label: "nav.walkIn", icon: CalendarPlus },
     { href: "/operator/bookings", label: "nav.bookings", icon: CalendarDays },
     { href: "/operator/zones", label: "nav.zones", icon: Layers },
     { href: "/operator/layout", label: "nav.layout", icon: LayoutGrid },
     { href: "/operator/hours", label: "nav.hours", icon: Clock },
     { href: "/operator/managers", label: "nav.managers", icon: Eye },
-    { href: "/operator/location", label: "nav.location", icon: MapPinned },
+    { href: "/operator/location", label: "nav.clubSettings", icon: MapPinned },
   ],
   manager: [{ href: "/manager", label: "nav.myClubs", icon: Eye, exact: true }],
 };

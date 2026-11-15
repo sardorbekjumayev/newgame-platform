@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Building2, Clock, Gamepad2, Layers, LocateFixed, MapPin, Navigation, Radar, Search, Sparkles } from "lucide-react";
+import { ArrowRight, Building2, CalendarCheck, CalendarClock, ChevronDown, Clock, LayoutGrid, Undo2, Gamepad2, Layers, LocateFixed, MapPin, Navigation, Radar, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -210,6 +210,41 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ONLAYN BRON */}
+        <section className="mt-24 grid items-center gap-8 overflow-hidden rounded-[28px] border border-line-soft bg-surface p-6 sm:p-10 lg:grid-cols-[1.1fr_1fr]">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 text-sm font-bold text-accent">
+              <CalendarCheck className="h-4 w-4" />
+              {t("landing.book.kicker")}
+            </div>
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">{t("landing.book.title")}</h2>
+            <p className="text-muted">{t("landing.book.text")}</p>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <a href="#clubs" className="inline-flex h-12 items-center gap-2 rounded-xl bg-accent px-6 font-bold text-on-accent transition hover:bg-accent-hover">
+                <Gamepad2 className="h-5 w-5" />
+                {t("landing.book.cta")}
+              </a>
+              <Link href="/bookings" className="inline-flex h-12 items-center gap-2 rounded-xl border border-line px-6 font-bold transition hover:border-accent/60 hover:text-accent">
+                {t("landing.book.mine")}
+              </Link>
+            </div>
+          </div>
+          <ul className="grid gap-3">
+            {[
+              { icon: CalendarClock, text: t("landing.book.f1") },
+              { icon: LayoutGrid, text: t("landing.book.f2") },
+              { icon: Undo2, text: t("landing.book.f3") },
+            ].map((f) => (
+              <li key={f.text} className="flex items-center gap-4 rounded-2xl bg-surface-2 p-4">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent">
+                  <f.icon className="h-5 w-5" />
+                </span>
+                <span className="font-semibold">{f.text}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
         {/* QANDAY ISHLAYDI */}
         <section id="how" className="mt-24 scroll-mt-24 space-y-8">
           <div className="text-center">
@@ -220,7 +255,7 @@ export default function Home() {
             {[
               { icon: LocateFixed, title: t("landing.step1"), text: t("landing.step1.text") },
               { icon: Layers, title: t("landing.step2"), text: t("landing.step2.text") },
-              { icon: Navigation, title: t("landing.step3"), text: t("landing.step3.text") },
+              { icon: CalendarCheck, title: t("landing.step3"), text: t("landing.step3.text") },
             ].map((s, i) => (
               <li key={s.title} className="relative overflow-hidden rounded-[20px] border border-line-soft bg-surface p-6">
                 <span className="absolute right-4 top-2 font-display text-7xl font-bold text-surface-3">{i + 1}</span>
@@ -232,6 +267,22 @@ export default function Home() {
               </li>
             ))}
           </ol>
+        </section>
+
+        {/* FAQ */}
+        <section id="faq" className="mt-24 scroll-mt-24 space-y-6">
+          <h2 className="text-center font-display text-3xl font-bold sm:text-4xl">{t("landing.faq.title")}</h2>
+          <div className="mx-auto max-w-3xl space-y-3">
+            {([1, 2, 3, 4] as const).map((n) => (
+              <details key={n} className="group rounded-2xl border border-line-soft bg-surface px-5 open:border-accent/40">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-bold [&::-webkit-details-marker]:hidden">
+                  {t(`landing.faq.q${n}`)}
+                  <ChevronDown className="h-5 w-5 shrink-0 text-muted transition group-open:rotate-180 group-open:text-accent" />
+                </summary>
+                <p className="pb-4 text-sm text-muted">{t(`landing.faq.a${n}`)}</p>
+              </details>
+            ))}
+          </div>
         </section>
 
         {/* KLUB EGALARI UCHUN */}

@@ -390,7 +390,7 @@ model devices {
 model bookings {
   id               String          @id @db.Uuid
   code             String          @unique
-  customer_id      String          @db.Uuid
+  customer_id      String?         @db.Uuid // WALK_IN da akkaunt bo'lmasligi mumkin
   club_id          String          @db.Uuid
   status           String          @default("CONFIRMED")
   start_at         DateTime        @db.Timestamptz
@@ -401,9 +401,16 @@ model bookings {
   cancelled_at     DateTime?       @db.Timestamptz
   cancelled_by     String?         @db.Uuid
   checked_in_at    DateTime?       @db.Timestamptz
+  contact_status   String          @default("NEW") // operator qo'ng'irog'i: NEW | CONFIRMED | PREPAID | NO_ANSWER
+  contact_note     String?
+  contacted_at     DateTime?       @db.Timestamptz
   created_at       DateTime        @default(now()) @db.Timestamptz
   updated_at       DateTime        @updatedAt @db.Timestamptz
-  customer         users           @relation(fields: [customer_id], references: [id])
+  source           String          @default("ONLINE") // ONLINE | WALK_IN (operator joyida)
+  guest_name       String?
+  guest_phone      String?
+  created_by       String?         @db.Uuid // WALK_IN: operator
+  customer         users?          @relation(fields: [customer_id], references: [id])
   club             clubs           @relation(fields: [club_id], references: [id], onDelete: Cascade)
   items            booking_items[]
 

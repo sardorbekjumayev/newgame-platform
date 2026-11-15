@@ -1,7 +1,7 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsDateString, IsInt, IsOptional, IsUUID, Matches, Max, Min } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min } from 'class-validator';
 import { type Actor, CurrentActor } from '../../common/decorators/actor.decorator';
 import { AuthUser, CurrentUser, Public, RequirePermission } from '../../common/decorators/auth.decorators';
 import { RateLimit } from '../../common/rate-limit/rate-limit.decorators';
@@ -23,11 +23,30 @@ export class CreateBookingDto {
   @ApiProperty() @IsUUID() club_id!: string;
   @ApiProperty() @IsDateString() start_at!: string;
   @ApiProperty({ example: 120 }) @Type(() => Number) @IsInt() @Min(30) @Max(720) duration_minutes!: number;
-  @ApiProperty({ type: [String] }) @IsArray() @ArrayMinSize(1) @ArrayMaxSize(10) @IsUUID('all', { each: true }) device_ids!: string[];
+  @ApiProperty({ type: [String] }) @IsArray() @ArrayMinSize(1) @ArrayMaxSize(5) @IsUUID('all', { each: true }) device_ids!: string[];
 }
 
 export class OperatorBookingsQuery {
   @ApiPropertyOptional({ example: '2026-11-16' }) @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/) date?: string;
+}
+
+export class OperatorAvailabilityQuery {
+  @ApiPropertyOptional({ description: "Bo'sh — hozir" }) @IsOptional() @IsDateString() start_at?: string;
+  @ApiProperty({ example: 120 }) @Type(() => Number) @IsInt() @Min(30) @Max(720) duration!: number;
+}
+
+export class WalkInDto {
+  @ApiPropertyOptional({ description: "Bo'sh — hozir" }) @IsOptional() @IsDateString() start_at?: string;
+  @ApiProperty({ example: 120 }) @Type(() => Number) @IsInt() @Min(30) @Max(720) duration_minutes!: number;
+  @ApiProperty({ type: [String] }) @IsArray() @ArrayMinSize(1) @ArrayMaxSize(20) @IsUUID('all', { each: true }) device_ids!: string[];
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(80) guest_name?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) guest_phone?: string;
+  @ApiPropertyOptional({ description: 'Hozir boshlansa — darhol «Keldi» (default true)' }) @IsOptional() @IsBoolean() check_in?: boolean;
+}
+
+export class ContactDto {
+  @ApiProperty({ enum: ['NEW', 'CONFIRMED', 'PREPAID', 'NO_ANSWER'] }) @IsIn(['NEW', 'CONFIRMED', 'PREPAID', 'NO_ANSWER']) contact_status!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) note?: string;
 }
 
 @ApiTags('bookings')
@@ -85,6 +104,46 @@ export class BookingsController {
   }
 
   @ApiBearerAuth()
+  @Get('operator/bookings/upcoming')
+  @RequirePermission('operator.dashboard')
+  @ApiOperation({ summary: 'Kutilayotgan bronlar (yangilari birinchi)' })
+  operatorUpcoming(@CurrentUser() u: AuthUser) {
+    return this.svc.operatorUpcoming(u.id);
+  }
+
+  @ApiBearerAuth()
+  @Get('operator/bookings/availability')
+  @RequirePermission('operator.dashboard')
+  @ApiOperation({ summary: 'Joyida bron uchun bo\'sh o\'rindiqlar (start_at bo\'sh — hozir)' })
+  operatorAvailability(@Query() q: OperatorAvailabilityQuery, @CurrentUser() u: AuthUser) {
+    return this.svc.operatorAvailability(u.id, q.start_at, q.duration);
+  }
+
+  @ApiBearerAuth()
+  @Post('operator/bookings/walk-in')
+  @RequirePermission('operator.dashboard')
+  @ApiOperation({ summary: 'Joyida bron — klubga o\'zi kelgan mijoz (akkaunt ixtiyoriy)' })
+  operatorWalkIn(@Body() dto: WalkInDto, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
+    return this.svc.operatorWalkIn(u.id, dto, a);
+  }
+
+  @ApiBearerAuth()
+  @Get('operator/bookings/by-code/:code')
+  @RequirePermission('operator.dashboard')
+  @ApiOperation({ summary: 'Kod bo\'yicha bron' })
+  operatorByCode(@Param('code') code: string, @CurrentUser() u: AuthUser) {
+    return this.svc.operatorByCode(u.id, code.slice(0, 20));
+  }
+
+  @ApiBearerAuth()
+  @Put('operator/bookings/:id/contact')
+  @RequirePermission('operator.dashboard')
+  @ApiOperation({ summary: 'Mijoz bilan bog\'lanish natijasi' })
+  operatorContact(@Param('id', uuid) id: string, @Body() dto: ContactDto, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
+    return this.svc.operatorContact(u.id, id, dto.contact_status, dto.note, a);
+  }
+
+  @ApiBearerAuth()
   @HttpCode(200)
   @Post('operator/bookings/:id/check-in')
   @RequirePermission('operator.dashboard')
@@ -106,5 +165,14 @@ export class BookingsController {
   @RequirePermission('operator.dashboard')
   operatorCancel(@Param('id', uuid) id: string, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
     return this.svc.operatorAction(u.id, id, 'cancel', a);
+  }
+
+  @ApiBearerAuth()
+  @HttpCode(200)
+  @Post('operator/bookings/:id/undo-check-in')
+  @RequirePermission('operator.dashboard')
+  @ApiOperation({ summary: "Xato bosilgan «Keldi»ni qaytarish" })
+  operatorUndoCheckIn(@Param('id', uuid) id: string, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
+    return this.svc.operatorUndoCheckIn(u.id, id, a);
   }
 }

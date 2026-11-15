@@ -4,6 +4,7 @@ import { formatMoney } from "@ng/types";
 import { CalendarCheck, CheckCircle2, Clock, Monitor } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { BookingTicket, type TicketBooking } from "@/components/booking-ticket";
 import { Alert, Button, Card, Chip, Spinner, cx } from "@/components/ui";
 import { type DecorKind, ZoneLayoutView, type ZoneLayout } from "@/components/zone-layout-view";
 import { type MessageKey, useErrorText, useI18n } from "@/i18n/provider";
@@ -13,7 +14,7 @@ import { useApi } from "@/lib/use-api";
 
 const ADVANCE_DAYS = 5;
 const HOURS = [1, 2, 3, 4, 5];
-const MAX_DEVICES = 10;
+const MAX_DEVICES = 5; // API: BOOKING_RULES.maxDevices
 
 type Slots = { windows: { from: string; to: string }[] };
 type AvailDevice = { id: string; seat_no: number; status: "FREE" | "BUSY" | "UNAVAILABLE" };
@@ -39,6 +40,7 @@ export function BookingWidget({ clubId }: { clubId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Created | null>(null);
+  const [ticket, setTicket] = useState<TicketBooking | null>(null);
   const minutes = hours * 60;
 
   const slots = useApi<Slots>(`/clubs/${clubId}/booking/slots?date=${date}&duration=${minutes}`);
@@ -59,8 +61,12 @@ export function BookingWidget({ clubId }: { clubId: string }) {
 
   function toggle(d: AvailDevice) {
     if (d.status !== "FREE") return;
+    if (!picked.includes(d.id) && picked.length >= MAX_DEVICES) {
+      setError(t("book.maxSeats", { n: MAX_DEVICES }));
+      return;
+    }
     setError(null);
-    setPicked((p) => (p.includes(d.id) ? p.filter((x) => x !== d.id) : p.length >= MAX_DEVICES ? p : [...p, d.id]));
+    setPicked((p) => (p.includes(d.id) ? p.filter((x) => x !== d.id) : [...p, d.id]));
   }
 
   async function book() {
@@ -68,8 +74,9 @@ export function BookingWidget({ clubId }: { clubId: string }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await session.post<Created>("/bookings", { club_id: clubId, start_at: start, duration_minutes: minutes, device_ids: picked });
+      const res = await session.post<TicketBooking>("/bookings", { club_id: clubId, start_at: start, duration_minutes: minutes, device_ids: picked });
       setDone(res.data);
+      setTicket(res.data);
     } catch (e) {
       setError(errorText(e));
       avail.reload();
@@ -82,22 +89,28 @@ export function BookingWidget({ clubId }: { clubId: string }) {
 
   if (done)
     return (
-      <Card className="space-y-3 border border-accent/40 text-center">
-        <CheckCircle2 className="mx-auto h-12 w-12 text-accent" />
-        <div className="font-display text-2xl font-bold">{t("booking.done")}</div>
-        <div className="text-muted">
-          {t("booking.code")}: <b className="font-mono text-xl text-fg">{done.code}</b>
+      <div className="mx-auto max-w-md space-y-4">
+        <div className="flex items-center justify-center gap-2 text-center font-display text-2xl font-bold">
+          <CheckCircle2 className="h-7 w-7 text-accent" /> {t("booking.done")}
         </div>
-        <p className="text-sm text-muted">{t("booking.payAtClub")}</p>
+        {ticket ? (
+          <BookingTicket b={ticket} />
+        ) : (
+          <Card className="space-y-2 text-center">
+            <div className="text-muted">{t("booking.code")}</div>
+            <div className="font-mono text-3xl font-bold tracking-[0.18em] text-accent">{done.code}</div>
+            <p className="text-sm text-muted">{t("booking.payAtClub")}</p>
+          </Card>
+        )}
         <div className="flex flex-wrap justify-center gap-2">
           <Link href="/bookings" className="inline-flex h-11 items-center rounded-xl bg-accent px-5 text-sm font-bold text-on-accent hover:bg-accent-hover">
             {t("booking.mine")}
           </Link>
-          <Button variant="secondary" onClick={() => (setDone(null), reset("date"), slots.reload())}>
+          <Button variant="secondary" onClick={() => (setDone(null), setTicket(null), reset("date"), slots.reload())}>
             {t("booking.another")}
           </Button>
         </div>
-      </Card>
+      </div>
     );
 
   return (
@@ -174,7 +187,7 @@ export function BookingWidget({ clubId }: { clubId: string }) {
             <Alert>{avail.error}</Alert>
           ) : (
             <div className="space-y-4">
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2">
                 {zones.map((z) => (
                   <button
                     key={z.id}
@@ -193,9 +206,16 @@ export function BookingWidget({ clubId }: { clubId: string }) {
                         <span className="ml-auto rounded-md bg-accent px-1.5 text-xs text-on-accent">{picked.filter((id) => devIndex.get(id)?.zone.id === z.id).length}</span>
                       )}
                     </div>
-                    <div className="mt-1 text-sm text-muted">
-                      {z.price == null ? t("booking.noTariff") : `${formatMoney(z.price, locale)} · ${t("seat.freeOf", { n: z.free, total: z.devices.length })}`}
-                    </div>
+                    {z.price == null ? (
+                      <div className="mt-1 text-sm text-muted">{t("booking.noTariff")}</div>
+                    ) : (
+                      <>
+                        <div className="mt-1 font-display text-lg font-bold text-accent tabular-nums">{formatMoney(z.price, locale)}</div>
+                        <div className="text-[11px] text-muted">{t("book.forDuration", { d: durationLabel(minutes, t as never) })}</div>
+                        {z.tariff && <div className="truncate text-xs text-muted">{z.tariff}</div>}
+                        <div className={cx("mt-0.5 text-xs font-semibold", z.free ? "text-fg" : "text-red-400")}>{t("seat.freeOf", { n: z.free, total: z.devices.length })}</div>
+                      </>
+                    )}
                   </button>
                 ))}
               </div>
@@ -250,6 +270,9 @@ export function BookingWidget({ clubId }: { clubId: string }) {
       {start && (
         <div className="space-y-3 border-t border-line-soft pt-4">
           {error && <Alert>{error}</Alert>}
+          <div className={picked.length >= MAX_DEVICES ? "text-xs font-semibold text-warn" : "text-xs text-muted"}>
+            {t("book.seatsPicked", { n: picked.length, max: MAX_DEVICES })}
+          </div>
           {picked.length > 0 && (
             <div className="flex flex-wrap gap-1.5 text-sm">
               {picked.map((id) => {

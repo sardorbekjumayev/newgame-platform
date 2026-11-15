@@ -7,6 +7,7 @@ import { JwtAuthGuard, PermissionGuard } from '../rbac/guards';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
+import { TelegramWebappService } from './telegram-webapp.service';
 import { TokenService } from './token.service';
 
 @Module({
@@ -22,6 +23,7 @@ import { TokenService } from './token.service';
     AuthService,
     OtpService,
     TokenService,
+    TelegramWebappService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     // Tartib muhim: JWT'dan keyin (kalit — user id), permission (DB so'rovlari) dan oldin
     { provide: APP_GUARD, useClass: RateLimitGuard },

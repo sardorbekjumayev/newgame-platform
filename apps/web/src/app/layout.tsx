@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Chakra_Petch, Manrope } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/header";
@@ -43,11 +44,15 @@ const JSON_LD = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // Telegram Mini App SDK hydration'dan oldin <html> ga --tg-viewport-* style qo'yadi
     <html
+      suppressHydrationWarning
       lang="uz"
       className={`${manrope.variable} ${chakra.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg pb-20 text-fg md:pb-0">
+        {/* Telegram Mini App SDK (oddiy brauzerda hech narsa qilmaydi) */}
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
         <Providers>
           <Header />

@@ -13,7 +13,7 @@ import { ClientInfo, TokenService } from './token.service';
 const LOGIN_LIMIT = 10;
 const LOGIN_WINDOW_S = 600;
 
-type ReqMeta = ClientInfo & { user_agent: string | null; request_id: string | null };
+export type ReqMeta = ClientInfo & { user_agent: string | null; request_id: string | null };
 
 @Injectable()
 export class AuthService {
