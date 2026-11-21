@@ -9,6 +9,9 @@ import { Alert, Button, Card, Field, Input } from "@/components/ui";
 import { useErrorText, useI18n } from "@/i18n/provider";
 import { session, useAuth } from "@/lib/session";
 
+/** Faqat ichki yo'l (open redirect oldi). */
+const safeNext = (next: string | null) => (next && next.startsWith("/") && !next.startsWith("//") ? next : null);
+
 const normalizePhone = (v: string) => {
   const digits = v.replace(/\D/g, "");
   if (digits.length === 9) return `+998${digits}`;
@@ -45,8 +48,8 @@ function Login() {
   }, [isTg, router, params]);
 
   useEffect(() => {
-    // Kirgan foydalanuvchi — faqat ochilganda (verify'dan keyingi yo'naltirishni buzmaslik uchun)
-    if (me && !busy) router.replace("/");
+    // Kirgan foydalanuvchi — faqat ochilganda (verify'dan keyingi yo'naltirishni buzmaslik uchun); `next` bo'lsa o'sha yerga
+    if (me && !busy) router.replace(safeNext(params.get("next")) ?? "/");
   }, [me, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -84,11 +87,8 @@ function Login() {
     try {
       const res = await session.post<LoginResult>("/auth/verify-otp", { phone: normalizePhone(phone), code: value, device: { platform: "web" } });
       signIn(res.data);
-      // Faqat ichki yo'l (open redirect oldi)
-      const next = new URLSearchParams(window.location.search).get("next");
-      const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : null;
-      // busy yoqiq qoladi — aks holda "kirgan foydalanuvchi → /profile" effekti `next` ni bosib ketadi
-      router.replace(safeNext ?? "/");
+      // busy yoqiq qoladi — aks holda "kirgan foydalanuvchi" effekti yo'naltirishni takrorlaydi
+      router.replace(safeNext(new URLSearchParams(window.location.search).get("next")) ?? "/");
     } catch (err) {
       setError(errorText(err));
       setBusy(false);
@@ -96,9 +96,9 @@ function Login() {
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-sm p-6">
-        <h1 className="mb-5 font-display text-2xl font-bold">{t("auth.title")}</h1>
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-5 py-8 sm:py-14">
+      <h1 className="mb-6 font-display text-[44px] uppercase leading-none sm:text-6xl">{t("auth.title")}</h1>
+      <Card className="rounded-[24px]! sm:p-7">
         {fromBooking && step === "phone" && (
           <div className="mb-4">
             <Alert tone="info">{t("auth.reasonBook")}</Alert>
@@ -118,7 +118,7 @@ function Login() {
             }}
           >
             <Field label={t("auth.phone")}>
-              <Input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" autoFocus required />
+              <Input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" autoFocus required className="text-lg!" />
             </Field>
             <Button type="submit" loading={busy} size="lg" className="w-full">
               {t("auth.sendCode")}
@@ -134,13 +134,13 @@ function Login() {
             }}
           >
             {sent && !sent.delivered ? (
-              <div className="space-y-3 rounded-xl border border-line bg-surface-2 p-4 text-sm">
-                <p>{t("auth.tgLinkHint")}</p>
+              <div className="space-y-3 rounded-[14px] border-2 border-line-strong p-4 text-sm">
+                <p className="font-semibold">{t("auth.tgLinkHint")}</p>
                 <a
                   href={sent.bot_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#229ED9] font-bold text-white transition hover:brightness-110"
+                  className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#229ED9] font-bold text-white transition hover:brightness-110"
                 >
                   {t("auth.openBot")}
                 </a>
@@ -151,7 +151,7 @@ function Login() {
                 </ol>
               </div>
             ) : (
-              <p className="text-sm text-muted">{sent?.channel === "DEV" ? t("auth.codeSentDev") : t("auth.codeSent", { phone: normalizePhone(phone) })}</p>
+              <p className="text-sm font-semibold text-soft">{sent?.channel === "DEV" ? t("auth.codeSentDev") : t("auth.codeSent", { phone: normalizePhone(phone) })}</p>
             )}
             <Field label={t("auth.code")} hint={sent?.channel === "DEV" ? t("auth.devHint") : undefined}>
               <Input
@@ -165,7 +165,7 @@ function Login() {
                   // 6 raqam to'lganda avtomatik tasdiqlash — qo'shimcha bosish shart emas
                   if (next.length === 6 && !busy) void verify(next);
                 }}
-                className="text-center font-mono text-lg tracking-[0.5em]"
+                className="h-16! text-center font-display text-[32px]! tracking-[0.3em]"
                 autoFocus
                 required
               />
@@ -173,14 +173,14 @@ function Login() {
             <Button type="submit" loading={busy} disabled={code.length !== 6} size="lg" className="w-full">
               {t("auth.verify")}
             </Button>
-            <div className="flex justify-between text-sm">
-              <button type="button" className="font-semibold text-muted hover:text-fg" onClick={() => setStep("phone")}>
+            <div className="flex flex-wrap justify-between gap-x-4 text-sm">
+              <button type="button" className="min-h-11 font-bold text-muted hover:text-fg" onClick={() => setStep("phone")}>
                 {t("auth.changePhone")}
               </button>
               {cooldown > 0 ? (
-                <span className="text-muted">{t("auth.resendIn", { s: cooldown })}</span>
+                <span className="flex min-h-11 items-center font-semibold text-muted">{t("auth.resendIn", { s: cooldown })}</span>
               ) : (
-                <button type="button" className="font-bold text-accent hover:underline" onClick={sendCode}>
+                <button type="button" className="min-h-11 font-bold text-accent hover:underline" onClick={sendCode}>
                   {t("auth.resend")}
                 </button>
               )}

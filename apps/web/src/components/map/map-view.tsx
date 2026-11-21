@@ -18,8 +18,20 @@ export function MapView({
   focus,
   fit,
   className,
+  fallback,
   ...events
-}: { center?: LatLng; zoom?: number; markers?: MapMarker[]; pin?: LatLng | null; pinAccuracy?: number; focus?: number; fit?: LatLng[]; className?: string } & MapEvents) {
+}: {
+  center?: LatLng;
+  zoom?: number;
+  markers?: MapMarker[];
+  pin?: LatLng | null;
+  pinAccuracy?: number;
+  focus?: number;
+  fit?: LatLng[];
+  className?: string;
+  /** Xarita yuklanmasa (kalit yo'q, tarmoq) xato matni o'rniga ko'rsatiladi */
+  fallback?: React.ReactNode;
+} & MapEvents) {
   const { t, locale } = useI18n();
   const el = useRef<HTMLDivElement>(null);
   const [handle, setHandle] = useState<MapHandle | null>(null);
@@ -76,11 +88,12 @@ export function MapView({
   return (
     <div className={`gc-map relative overflow-hidden bg-surface ${className ?? ""}`}>
       <div ref={el} className="absolute inset-0" />
-      {!handle && (
-        <div className="absolute inset-0 flex items-center justify-center text-sm text-muted">
-          {failed ? t("map.loadError") : <Spinner />}
-        </div>
-      )}
+      {!handle &&
+        (failed && fallback ? (
+          <div className="absolute inset-0">{fallback}</div>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-muted">{failed ? t("map.loadError") : <Spinner />}</div>
+        ))}
     </div>
   );
 }

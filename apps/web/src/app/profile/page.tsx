@@ -26,14 +26,14 @@ export default function ProfilePage() {
   const name = [me.first_name, me.last_name].filter(Boolean).join(" ");
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 space-y-6 px-4 py-8 sm:px-8">
+    <main className="mx-auto w-full max-w-3xl flex-1 space-y-5 px-5 py-6 sm:px-8 sm:py-10">
       <div className="flex items-center gap-4">
-        <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-accent font-display text-2xl font-bold text-on-accent">
+        <span className="grid h-[72px] w-[72px] shrink-0 place-items-center rounded-[18px] bg-accent font-display text-[40px] leading-none text-on-accent">
           {(me.first_name || me.phone || "?").replace("+", "").slice(0, 1).toUpperCase()}
         </span>
         <div className="min-w-0">
-          <h1 className="truncate font-display text-2xl font-bold">{name || t("profile.title")}</h1>
-          <div className="text-muted">{me.phone}</div>
+          <h1 className="truncate font-display text-[40px] uppercase leading-none sm:text-[56px]">{name || t("profile.title")}</h1>
+          <div className="mt-1.5 font-semibold text-muted">{me.phone}</div>
         </div>
       </div>
       {!name && <Alert tone="info">{t("profile.fillName")}</Alert>}
@@ -73,9 +73,9 @@ function SettingsCard() {
   }
 
   return (
-    <Card className="space-y-4 p-6">
-      <div className="flex items-center gap-2 font-display text-lg font-bold">
-        <Settings className="h-5 w-5 text-accent" />
+    <Card className="space-y-5 rounded-[24px]! sm:p-7">
+      <div className="flex items-center gap-2.5 font-display text-[28px] uppercase leading-none">
+        <Settings className="h-6 w-6 text-accent" strokeWidth={2.4} />
         {t("profile.settings")}
       </div>
       <form onSubmit={save} className="space-y-4">
@@ -102,7 +102,8 @@ function SettingsCard() {
                 key={l}
                 type="button"
                 onClick={() => (setSaved(false), setLang(l))}
-                className={`h-10 rounded-xl border px-4 text-sm font-semibold transition ${lang === l ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface hover:border-muted/60"}`}
+                aria-pressed={lang === l}
+                className={`min-h-11 rounded-full border-2 px-4 text-sm font-bold transition ${lang === l ? "border-accent bg-accent text-on-accent" : "border-fg text-fg hover:bg-fg hover:text-ink"}`}
               >
                 {LANG_NAMES[l]}
               </button>
@@ -111,8 +112,8 @@ function SettingsCard() {
         </Field>
         {error && <Alert>{error}</Alert>}
         {saved && <Alert tone="success">{t("profile.saved")}</Alert>}
-        <Button type="submit" loading={busy}>
-          <Save className="h-4 w-4" />
+        <Button type="submit" loading={busy} size="lg" className="w-full sm:w-auto">
+          <Save className="h-5 w-5" strokeWidth={2.6} />
           {t("profile.save")}
         </Button>
       </form>
@@ -153,28 +154,28 @@ function SessionsCard() {
   };
 
   return (
-    <Card className="space-y-4 p-6">
-      <div className="flex items-center gap-2 font-display text-lg font-bold">
-        <ShieldCheck className="h-5 w-5 text-accent" />
+    <Card className="space-y-4 rounded-[24px]! sm:p-7">
+      <div className="flex items-center gap-2.5 font-display text-[28px] uppercase leading-none">
+        <ShieldCheck className="h-6 w-6 text-accent" strokeWidth={2.4} />
         {t("profile.sessions")}
       </div>
-      <p className="text-sm text-muted">{t("profile.sessionsHint")}</p>
+      <p className="text-sm font-semibold text-muted">{t("profile.sessionsHint")}</p>
       {error && <Alert>{error}</Alert>}
       {!list.data ? (
         <Spinner className="h-5 w-5" />
       ) : (
-        <ul className="divide-y divide-line-soft rounded-2xl border border-line-soft">
+        <ul className="divide-y-2 divide-line overflow-hidden rounded-[14px] border-2 border-line">
           {list.data.map((s) => {
             const mobile = /android|iphone|ipad/i.test(s.device_info?.user_agent ?? "");
             return (
-              <li key={s.id} className={`flex items-center gap-3 px-4 py-3 ${s.current ? "bg-accent/5" : ""}`}>
+              <li key={s.id} className={`flex items-center gap-3 px-4 py-3 ${s.current ? "bg-surface-2" : ""}`}>
                 {mobile ? <Smartphone className={`h-5 w-5 shrink-0 ${s.current ? "text-accent" : "text-muted"}`} /> : <Monitor className={`h-5 w-5 shrink-0 ${s.current ? "text-accent" : "text-muted"}`} />}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 truncate text-sm font-semibold">
+                  <div className="flex items-center gap-2 truncate text-[15px] font-bold">
                     {deviceName(s)}
-                    {s.current && <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-bold text-accent">{t("profile.thisDevice")}</span>}
+                    {s.current && <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-on-accent">{t("profile.thisDevice")}</span>}
                   </div>
-                  <div className="truncate text-xs text-muted">
+                  <div className="truncate text-xs font-semibold text-muted">
                     {fmtDateTimeTz(s.created_at, locale)}
                     {s.ip ? ` · ${s.ip}` : ""}
                   </div>
@@ -209,9 +210,9 @@ function LogoutCard() {
   }
 
   return (
-    <Card className="flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-2 font-display text-lg font-bold">
-        <UserCircle className="h-5 w-5 text-accent" />
+    <Card className="flex flex-col gap-4 rounded-[24px]! sm:flex-row sm:items-center sm:justify-between sm:p-7">
+      <div className="flex items-center gap-2.5 font-display text-[28px] uppercase leading-none">
+        <UserCircle className="h-6 w-6 text-accent" strokeWidth={2.4} />
         {t("profile.account")}
       </div>
       <div className="flex flex-wrap gap-2">
@@ -219,7 +220,7 @@ function LogoutCard() {
           {t("auth.logoutAll")}
         </Button>
         <Button variant="danger" loading={busy === "one"} onClick={() => out(false)}>
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-4 w-4" strokeWidth={2.6} />
           {t("auth.logout")}
         </Button>
       </div>

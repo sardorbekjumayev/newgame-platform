@@ -21,7 +21,7 @@ export function LegalConsent({ kind, className }: { kind: "login" | "booking" | 
         const doc = p.match(/^\{(offer|privacy|terms)\}$/)?.[1] as Exclude<LegalDoc, "partner"> | undefined;
         if (!doc) return <Fragment key={i}>{p}</Fragment>;
         return (
-          <Link key={i} href={`/legal/${doc}`} target="_blank" className="font-semibold text-fg underline decoration-line underline-offset-2 hover:text-accent">
+          <Link key={i} href={`/legal/${doc}`} target="_blank" className="font-semibold text-fg underline decoration-dim underline-offset-2 hover:text-accent">
             {t(LINK_LABEL[doc])}
           </Link>
         );

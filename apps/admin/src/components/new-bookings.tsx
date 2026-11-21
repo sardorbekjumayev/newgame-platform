@@ -1,9 +1,10 @@
 "use client";
 
 import { formatMoney } from "@ng/types";
-import { AlarmClock, BellRing, CalendarDays, CalendarPlus, Check, PhoneCall, PhoneOff, Phone, Search, UserCheck, UserX, X } from "lucide-react";
+import { AlarmClock, BellRing, CalendarDays, CalendarPlus, Check, PhoneCall, PhoneOff, Phone, Search, Square, Timer, UserCheck, UserX, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { type OpenInfo, type StoppedSession, StoppedModal, fmtElapsed } from "@/components/open-session";
 import { type ZoneLayout, ZoneLayoutView } from "@/components/zone-layout";
 import { Alert, Badge, Button, Card, Input, Modal, cx } from "@/components/ui";
 import { type MessageKey, useErrorText, useI18n } from "@/i18n/provider";
@@ -14,10 +15,16 @@ type Booking = {
   id: string; code: string; status: string; start_at: string; end_at: string; created_at: string; total_amount: number;
   contact_status: Contact; contact_note: string | null; contacted_at: string | null;
   customer: { first_name: string | null; last_name: string | null; phone: string | null };
+  /** Mijoz bron paytida tasdiqlagan aloqa raqami — qo'ng'iroq shu raqamga (bo'sh bo'lsa akkaunt raqami) */
+  contact_phone?: string | null;
   zones: { id: string; name: string; color: string | null; layout: ZoneLayout | null; devices_count: number | null; seats: number[] }[];
 };
-type Board = { bookings: Booking[]; no_show_after_minutes: number; stats: { today: number; checked_in_today: number; cancelled_today: number; late: number; uncontacted: number } };
+type OpenSession = Booking & { open: OpenInfo };
+type Board = { bookings: Booking[]; open_sessions?: OpenSession[]; no_show_after_minutes: number; stats: { today: number; checked_in_today: number; cancelled_today: number; late: number; uncontacted: number } };
 type Filter = "all" | "late" | "uncontacted";
+
+/** Qo'ng'iroq qilinadigan raqam: mijoz bron paytida ko'rsatgani, bo'lmasa akkaunt (yoki mehmon) raqami. */
+const callPhone = (b: Booking) => b.contact_phone ?? b.customer.phone;
 
 const TZ = "Asia/Tashkent";
 const NEW_MS = 30 * 60_000;
@@ -48,6 +55,8 @@ export function NewBookings() {
   const [codeError, setCodeError] = useState<string | null>(null);
   const seen = useRef<Set<string> | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
+  const [stopping, setStopping] = useState<string | null>(null);
+  const [stopped, setStopped] = useState<StoppedSession | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   async function load() {
@@ -74,6 +83,22 @@ export function NewBookings() {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Ochiq sessiyani to'xtatish — yakuniy summa oynada ko'rsatiladi. */
+  async function stop(b: OpenSession) {
+    if (!confirm(t("opOpen.stopConfirm"))) return;
+    setStopping(b.id);
+    setError(null);
+    try {
+      const res = await session.post<StoppedSession>(`/operator/bookings/${b.id}/stop`, {});
+      setStopped(res.data);
+      load();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setStopping(null);
+    }
+  }
 
   async function findByCode(e: React.FormEvent) {
     e.preventDefault();
@@ -146,6 +171,50 @@ export function NewBookings() {
         <StatCard icon={UserX} label={t("opDesk.stat.cancelled")} value={st?.cancelled_today} />
       </div>
 
+      {/* Ochiq vaqt: davom etayotgan sessiyalar — to'xtatishni faqat operator bosadi */}
+      {!!board?.open_sessions?.length && (
+        <Card className="space-y-3 border border-accent/30">
+          <div className="flex items-center gap-2 font-bold">
+            <Timer className="h-5 w-5 text-accent" />
+            {t("opOpen.title")}
+            <Badge tone="violet">{board.open_sessions.length}</Badge>
+          </div>
+          <div className="space-y-2">
+            {board.open_sessions.map((b) => (
+              <div key={b.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl bg-surface-2 p-3">
+                <div className="w-24 shrink-0">
+                  <div className="font-display text-lg font-bold tabular-nums">{fmt(b.start_at).hm}</div>
+                  <div className="text-xs font-semibold text-accent">{fmtElapsed(b.open.elapsed_minutes, t)}</div>
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold">{nameOf(b) || t("opBooking.noName")}</span>
+                    {callPhone(b) && <span className="text-sm font-semibold text-accent">{callPhone(b)}</span>}
+                    <span className="font-mono text-xs text-muted">#{b.code}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    {b.zones.map((z) => (
+                      <span key={z.id} className="inline-flex items-center gap-1.5 rounded-lg bg-surface px-2 py-0.5 font-semibold">
+                        <span className="h-2 w-2 rounded-full" style={{ background: z.color ?? "#3a3f4b" }} />
+                        {z.name} #{z.seats.join(", #")}
+                      </span>
+                    ))}
+                    <span className="text-muted">· {t("opOpen.until", { time: fmt(b.open.limit_at).hm })}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-muted">{t("opOpen.running")}</div>
+                  <div className="font-bold tabular-nums">{formatMoney(b.open.amount, locale)}</div>
+                </div>
+                <Button size="sm" loading={stopping === b.id} onClick={() => stop(b)}>
+                  <Square className="h-4 w-4" /> {t("opOpen.stop")}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* Bronlar ro'yxati */}
       <div ref={listRef} className="scroll-mt-4">
         <Card className="space-y-3">
@@ -198,7 +267,7 @@ export function NewBookings() {
                     <div className="flex flex-wrap items-center gap-2">
                       {isNew && <Badge tone="green">{t("opNew.new")}</Badge>}
                       <span className="font-bold">{nameOf(b) || t("opBooking.noName")}</span>
-                      {b.customer.phone && <span className="text-sm font-semibold text-accent">{b.customer.phone}</span>}
+                      {callPhone(b) && <span className="text-sm font-semibold text-accent">{callPhone(b)}</span>}
                       <span className="font-mono text-xs text-muted">#{b.code}</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 text-xs">
@@ -223,6 +292,8 @@ export function NewBookings() {
           </div>
         </Card>
       </div>
+
+      {stopped && <StoppedModal s={stopped} onClose={() => setStopped(null)} />}
 
       {open && (
         <BookingModal
@@ -347,10 +418,14 @@ function BookingModal({
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-surface-2 p-3">
           <div>
             <div className="font-bold">{nameOf(b) || t("opBooking.noName")}</div>
-            {b.customer.phone && <div className="text-sm text-muted">{b.customer.phone}</div>}
+            {callPhone(b) && <div className="text-sm font-semibold">{callPhone(b)}</div>}
+            {/* Aloqa raqami akkauntnikidan farq qilsa — ikkalasi ham ko'rinadi */}
+            {b.contact_phone && b.customer.phone && b.contact_phone !== b.customer.phone && (
+              <div className="text-xs text-muted">{t("opDesk.accountPhone", { phone: b.customer.phone })}</div>
+            )}
           </div>
-          {b.customer.phone && (
-            <a href={`tel:${b.customer.phone}`} className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-bold text-on-accent">
+          {callPhone(b) && (
+            <a href={`tel:${callPhone(b)}`} className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-sm font-bold text-on-accent">
               <Phone className="h-4 w-4" /> {t("opDesk.call")}
             </a>
           )}

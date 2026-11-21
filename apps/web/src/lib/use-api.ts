@@ -49,6 +49,9 @@ export const normalizePhone = (v: string) => {
   return `+${digits}`;
 };
 
+/** O'zbekiston raqami: +998 va 9 raqam (API `UZ_PHONE` bilan bir xil). */
+export const isUzPhone = (v: string) => /^\+998\d{9}$/.test(normalizePhone(v));
+
 /** Takroriy yuborishdan himoya uchun Idempotency-Key. */
 export const idemKey = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 

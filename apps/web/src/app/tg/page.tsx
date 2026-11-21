@@ -3,6 +3,7 @@
 import { Loader2, Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { buttonClass } from "@/components/ui";
 import { useI18n } from "@/i18n/provider";
 import { useTelegram } from "@/lib/telegram";
 
@@ -30,26 +31,26 @@ export default function TelegramEntry() {
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-5 px-6 py-16 text-center">
       {status === "need_contact" ? (
         <>
-          <span className="grid h-16 w-16 place-items-center rounded-2xl bg-accent/15 text-accent">
-            <Phone className="h-8 w-8" />
+          <span className="grid h-[72px] w-[72px] place-items-center rounded-full bg-accent text-on-accent">
+            <Phone className="h-8 w-8" strokeWidth={2.6} />
           </span>
-          <h1 className="font-display text-2xl font-bold">{t("tg.needTitle")}</h1>
-          <p className="text-sm text-muted">{t("tg.needText")}</p>
-          <button onClick={() => void shareContact()} className="h-12 w-full rounded-xl bg-accent font-bold text-on-accent hover:bg-accent-hover">
+          <h1 className="font-display text-[44px] uppercase leading-none">{t("tg.needTitle")}</h1>
+          <p className="leading-normal text-soft">{t("tg.needText")}</p>
+          <button onClick={() => void shareContact()} className={buttonClass("primary", "lg", "w-full")}>
             {t("tg.share")}
           </button>
         </>
       ) : status === "error" ? (
         <>
-          <p className="text-sm text-muted">{t("tg.error")}</p>
-          <button onClick={() => void login()} className="h-11 rounded-xl border border-line px-5 font-semibold">
+          <p className="font-semibold text-soft">{t("tg.error")}</p>
+          <button onClick={() => void login()} className={buttonClass("secondary", "md")}>
             {t("tg.retry")}
           </button>
         </>
       ) : (
         <>
           <Loader2 className="h-8 w-8 animate-spin text-accent" />
-          <p className="text-sm text-muted">{t("tg.loading")}</p>
+          <p className="font-semibold text-muted">{t("tg.loading")}</p>
         </>
       )}
     </main>

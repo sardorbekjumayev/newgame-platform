@@ -2,15 +2,17 @@
 
 import { LOCALES, useI18n } from "@/i18n/provider";
 
+/** Til tanlash: oq hoshiyali segment, faoli oq fonda (template/design.html). */
 export function LocaleSwitcher() {
   const { locale, setLocale } = useI18n();
   return (
-    <div className="flex rounded-xl border border-line bg-surface p-0.5 text-xs">
+    <div className="inline-flex overflow-hidden rounded-[10px] border-2 border-fg">
       {LOCALES.map((l) => (
         <button
           key={l}
           onClick={() => setLocale(l)}
-          className={`rounded-[10px] px-2.5 py-1.5 font-bold uppercase transition ${l === locale ? "bg-accent text-on-accent" : "text-muted hover:text-fg"}`}
+          aria-pressed={l === locale}
+          className={`min-h-11 w-11 text-sm font-bold uppercase transition ${l === locale ? "bg-fg text-ink" : "text-fg hover:bg-surface"}`}
         >
           {l}
         </button>

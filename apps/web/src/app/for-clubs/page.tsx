@@ -1,9 +1,9 @@
 "use client";
 
-import { BarChart3, CalendarCheck, CheckCircle2, Sparkles, Users } from "lucide-react";
+import { BarChart3, CalendarCheck, Check, Users } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useState } from "react";
-import { Alert, Button, Card, Field, Input } from "@/components/ui";
+import { Alert, Button, Card, Field, Input, buttonClass, fieldClass } from "@/components/ui";
 import { useErrorText, useI18n } from "@/i18n/provider";
 import { api } from "@/lib/api";
 import { normalizePhone } from "@/lib/use-api";
@@ -52,63 +52,62 @@ export default function ForClubsPage() {
   const consent = t("apply.consent").split(/(\{partner\})/);
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-8 sm:py-14">
-      <div className="grid items-start gap-10 lg:grid-cols-[1fr_minmax(0,520px)]">
-        <section className="space-y-6 lg:sticky lg:top-24">
-          <span className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-3 py-1 text-sm font-bold text-accent">
-            <Sparkles className="h-4 w-4" />
-            {t("apply.kicker")}
-          </span>
-          <h1 className="font-display text-4xl font-bold leading-tight sm:text-5xl">{t("apply.title")}</h1>
-          <p className="max-w-lg text-muted">{t("apply.subtitle")}</p>
+    <main className="mx-auto w-full max-w-[1280px] flex-1 px-5 py-6 sm:px-8 sm:py-12">
+      <div className="grid items-start gap-10 lg:grid-cols-[1fr_minmax(0,520px)] lg:gap-14">
+        <section className="space-y-6 lg:sticky lg:top-28">
+          <span className="inline-block rounded-full border-2 border-accent px-[18px] py-2 text-[13px] font-bold tracking-[0.08em] text-accent uppercase">{t("apply.kicker")}</span>
+          <h1 className="font-display text-[48px] uppercase leading-[0.95] sm:text-[88px]">{t("apply.title")}</h1>
+          <p className="max-w-lg text-lg leading-normal font-medium text-soft">{t("apply.subtitle")}</p>
           <ul className="space-y-3">
             {[
               { icon: Users, key: "apply.benefit.clients" },
               { icon: CalendarCheck, key: "apply.benefit.booking" },
               { icon: BarChart3, key: "apply.benefit.reports" },
             ].map((b) => (
-              <li key={b.key} className="flex items-center gap-3 font-semibold">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-surface text-accent">
-                  <b.icon className="h-5 w-5" />
+              <li key={b.key} className="flex items-center gap-3 font-bold">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] bg-accent text-on-accent">
+                  <b.icon className="h-5 w-5" strokeWidth={2.6} />
                 </span>
                 {t(b.key as "apply.benefit.clients")}
               </li>
             ))}
           </ul>
-          <div className="rounded-[20px] border border-line-soft p-5">
-            <div className="mb-3 text-xs font-bold uppercase tracking-widest text-muted">{t("apply.steps.title")}</div>
-            <ol className="space-y-2.5 text-sm">
+          <div className="rounded-[18px] bg-surface p-5">
+            <div className="mb-3 text-[13px] font-bold tracking-[0.08em] text-accent uppercase">{t("apply.steps.title")}</div>
+            <ol className="space-y-3 font-semibold">
               {(["apply.step1", "apply.step2", "apply.step3"] as const).map((k, i) => (
-                <li key={k} className="flex items-center gap-3">
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent font-bold text-on-accent">{i + 1}</span>
+                <li key={k} className="flex items-center gap-3.5">
+                  <span className="w-5 shrink-0 font-display text-[32px] leading-none text-accent">{i + 1}</span>
                   {t(k)}
                 </li>
               ))}
             </ol>
           </div>
           {CLUB_PANEL_URL && (
-            <p className="text-sm text-muted">
+            <p className="text-sm font-semibold text-muted">
               {t("apply.haveAccount")}{" "}
-              <a href={CLUB_PANEL_URL} className="font-semibold text-fg underline decoration-line underline-offset-2 hover:text-accent">
+              <a href={CLUB_PANEL_URL} className="font-bold text-fg underline decoration-dim underline-offset-2 hover:text-accent">
                 {t("apply.login")}
               </a>
             </p>
           )}
         </section>
 
-        <Card className="p-6 sm:p-8">
+        <Card className="rounded-[24px]! sm:p-8">
           {sentTo ? (
             <div className="flex flex-col items-center gap-4 py-10 text-center" role="status">
-              <CheckCircle2 className="h-14 w-14 text-accent" />
-              <h2 className="font-display text-2xl font-bold">{t("apply.success.title")}</h2>
-              <p className="text-muted">{t("apply.success.text", { phone: sentTo })}</p>
-              <Link href="/" className="mt-2 inline-flex h-11 items-center rounded-xl border border-line bg-surface px-5 text-sm font-semibold hover:border-muted/60">
+              <span className="grid h-[72px] w-[72px] place-items-center rounded-full bg-accent text-on-accent">
+                <Check className="h-9 w-9" strokeWidth={3.2} />
+              </span>
+              <h2 className="font-display text-[40px] uppercase leading-none">{t("apply.success.title")}</h2>
+              <p className="font-semibold text-soft">{t("apply.success.text", { phone: sentTo })}</p>
+              <Link href="/" className={buttonClass("secondary", "md", "mt-2")}>
                 {t("apply.success.home")}
               </Link>
             </div>
           ) : (
             <form className="space-y-4" onSubmit={submit}>
-              <h2 className="font-display text-xl font-bold">{t("apply.form.title")}</h2>
+              <h2 className="font-display text-[32px] uppercase leading-none">{t("apply.form.title")}</h2>
               <Field label={t("apply.fullName")}>
                 <Input value={f.full_name} onChange={set("full_name")} autoComplete="name" minLength={2} maxLength={120} required />
               </Field>
@@ -128,7 +127,7 @@ export default function ForClubsPage() {
                   rows={3}
                   maxLength={2000}
                   placeholder={t("apply.commentPlaceholder")}
-                  className="w-full rounded-[14px] border border-line bg-surface px-4 py-3 text-[15px] text-fg outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  className={`w-full py-3 ${fieldClass}`}
                 />
               </Field>
               {error && <Alert>{error}</Alert>}
@@ -138,7 +137,7 @@ export default function ForClubsPage() {
               <p className="text-center text-xs leading-5 text-muted">
                 {consent.map((p, i) =>
                   p === "{partner}" ? (
-                    <Link key={i} href="/legal/partner" target="_blank" className="font-semibold text-fg underline decoration-line underline-offset-2 hover:text-accent">
+                    <Link key={i} href="/legal/partner" target="_blank" className="font-semibold text-fg underline decoration-dim underline-offset-2 hover:text-accent">
                       {t("legal.partner")}
                     </Link>
                   ) : (

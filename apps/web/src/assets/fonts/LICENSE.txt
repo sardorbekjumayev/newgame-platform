@@ -1,1 +1,1 @@
-Manrope, Chakra Petch — SIL Open Font License 1.1 (github.com/google/fonts)
+Anton, Oswald (cyrillic subset, @fontsource/oswald), Manrope — SIL Open Font License 1.1 (github.com/google/fonts)

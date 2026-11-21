@@ -9,20 +9,21 @@ export type ZoneLayout = { cols: number; rows: number; seats: { n: number; x: nu
 const CELL = 48;
 const ICON: Record<DecorKind, LucideIcon> = { ENTRANCE: DoorOpen, CASHIER: Wallet, WALL: BrickWall, AISLE: Footprints, TV: Tv, WC: Toilet };
 const STYLE: Record<DecorKind, string> = {
-  ENTRANCE: "border-2 border-dashed border-accent/70 bg-accent/10 text-accent",
-  CASHIER: "border-2 border-warn/70 bg-warn/10 text-warn",
-  WALL: "bg-line text-muted",
-  AISLE: "border border-dashed border-line text-muted/60",
-  TV: "border-2 border-line bg-surface-2 text-fg",
-  WC: "border-2 border-line bg-surface-2 text-muted",
+  ENTRANCE: "border-2 border-dashed border-accent text-accent",
+  CASHIER: "border-2 border-warn text-warn",
+  WALL: "bg-surface-3 text-dim",
+  AISLE: "border-2 border-dashed border-line-strong text-dim",
+  TV: "border-2 border-line-strong bg-surface-2 text-fg",
+  WC: "border-2 border-line-strong bg-surface-2 text-muted",
 };
 
+/** Bo'sh — oq hoshiya, tanlangan — lime, band — xira (dizayndagi tanlov tugmalari kabi). */
 export type SeatState = "FREE" | "BUSY" | "UNAVAILABLE" | "PICKED";
 const SEAT_STYLE: Record<SeatState, string> = {
-  FREE: "border-accent bg-bg text-accent hover:bg-accent/15 cursor-pointer",
+  FREE: "border-fg text-fg hover:bg-fg hover:text-ink cursor-pointer",
   PICKED: "border-accent bg-accent text-on-accent cursor-pointer",
-  BUSY: "border-line bg-surface-2 text-muted cursor-not-allowed opacity-60",
-  UNAVAILABLE: "border-line bg-surface-2 text-muted cursor-not-allowed opacity-40",
+  BUSY: "border-line-strong text-dim cursor-not-allowed",
+  UNAVAILABLE: "border-line-strong text-dim cursor-not-allowed opacity-50",
 };
 
 /** `seatState`/`onSeat` berilsa — tanlanadigan (bron): bo'sh/band/tanlangan o'rindiqlar. */
@@ -35,13 +36,13 @@ export function ZoneLayoutView({ layout, count, decorLabel, seatState, onSeat }:
   const cols = used.length ? Math.max(...used.map((c) => c.x)) + 1 : layout.cols;
   const rows = used.length ? Math.max(...used.map((c) => c.y)) + 1 : layout.rows;
   return (
-    <div className="flex justify-center overflow-auto rounded-2xl border border-line bg-surface p-3">
+    <div className="flex justify-center overflow-auto rounded-[18px] bg-surface p-3">
       <div
         className="relative"
         style={{
           width: cols * CELL,
           height: rows * CELL,
-          backgroundImage: "radial-gradient(circle, var(--color-line) 1.5px, transparent 1.5px)",
+          backgroundImage: "radial-gradient(circle, var(--color-line-strong) 1.5px, transparent 1.5px)",
           backgroundSize: `${CELL}px ${CELL}px`,
           backgroundPosition: `${CELL / 2}px ${CELL / 2}px`,
         }}
@@ -66,7 +67,7 @@ export function ZoneLayoutView({ layout, count, decorLabel, seatState, onSeat }:
           const inner = (
             <>
               <Monitor className="h-3.5 w-3.5" />
-              <b className={`text-[10px] leading-none tabular-nums ${st === "PICKED" ? "" : "text-fg"}`}>{s.n}</b>
+              <b className="text-[11px] leading-none tabular-nums">{s.n}</b>
             </>
           );
           return st ? (
@@ -75,13 +76,14 @@ export function ZoneLayoutView({ layout, count, decorLabel, seatState, onSeat }:
               type="button"
               disabled={st === "BUSY" || st === "UNAVAILABLE"}
               onClick={() => onSeat?.(s.n)}
-              className={`absolute flex flex-col items-center justify-center rounded-lg border-2 transition ${SEAT_STYLE[st]}`}
+              aria-pressed={st === "PICKED"}
+              className={`absolute flex flex-col items-center justify-center gap-0.5 rounded-lg border-2 transition ${SEAT_STYLE[st]}`}
               style={box}
             >
               {inner}
             </button>
           ) : (
-            <div key={s.n} className="absolute flex flex-col items-center justify-center rounded-lg border-2 border-accent bg-bg text-accent" style={box}>
+            <div key={s.n} className="absolute flex flex-col items-center justify-center gap-0.5 rounded-lg border-2 border-fg text-fg" style={box}>
               {inner}
             </div>
           );

@@ -1,10 +1,11 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 import { type Actor, CurrentActor } from '../../common/decorators/actor.decorator';
 import { AuthUser, CurrentUser, Public, RequirePermission } from '../../common/decorators/auth.decorators';
 import { RateLimit } from '../../common/rate-limit/rate-limit.decorators';
+import { UZ_PHONE } from '../auth/dto/auth.dto';
 import { BookingsService } from './bookings.service';
 
 const uuid = new ParseUUIDPipe();
@@ -24,6 +25,11 @@ export class CreateBookingDto {
   @ApiProperty() @IsDateString() start_at!: string;
   @ApiProperty({ example: 120 }) @Type(() => Number) @IsInt() @Min(30) @Max(720) duration_minutes!: number;
   @ApiProperty({ type: [String] }) @IsArray() @ArrayMinSize(1) @ArrayMaxSize(5) @IsUUID('all', { each: true }) device_ids!: string[];
+  @ApiPropertyOptional({ example: '+998901234567', description: "Aloqa raqami — operator shu raqamga qo'ng'iroq qiladi. Bo'sh — akkaunt raqami" })
+  @Transform(({ value }) => (typeof value === 'string' ? value.replace(/[\s()-]/g, '') : value))
+  @IsOptional()
+  @Matches(UZ_PHONE, { message: 'contact_phone must be in +998XXXXXXXXX format' })
+  contact_phone?: string;
 }
 
 export class OperatorBookingsQuery {
@@ -32,12 +38,14 @@ export class OperatorBookingsQuery {
 
 export class OperatorAvailabilityQuery {
   @ApiPropertyOptional({ description: "Bo'sh — hozir" }) @IsOptional() @IsDateString() start_at?: string;
-  @ApiProperty({ example: 120 }) @Type(() => Number) @IsInt() @Min(30) @Max(720) duration!: number;
+  @ApiPropertyOptional({ example: 120, description: 'open=1 da kerak emas' }) @ValidateIf((o) => !o.open) @Type(() => Number) @IsInt() @Min(30) @Max(720) duration?: number;
+  @ApiPropertyOptional({ description: "1 — ochiq vaqt uchun: hozirdan, narx soatiga, har bir joy qachongacha bo'sh (free_until)" }) @IsOptional() @IsIn(['1', 'true']) open?: string;
 }
 
 export class WalkInDto {
   @ApiPropertyOptional({ description: "Bo'sh — hozir" }) @IsOptional() @IsDateString() start_at?: string;
-  @ApiProperty({ example: 120 }) @Type(() => Number) @IsInt() @Min(30) @Max(720) duration_minutes!: number;
+  @ApiPropertyOptional({ example: 120, description: 'open=true da kerak emas' }) @ValidateIf((o) => !o.open) @Type(() => Number) @IsInt() @Min(30) @Max(720) duration_minutes?: number;
+  @ApiPropertyOptional({ description: "Ochiq vaqt: hozirdan boshlanadi, tugashi noma'lum — operator to'xtatadi (POST .../stop), summa o'shanda hisoblanadi" }) @IsOptional() @IsBoolean() open?: boolean;
   @ApiProperty({ type: [String] }) @IsArray() @ArrayMinSize(1) @ArrayMaxSize(20) @IsUUID('all', { each: true }) device_ids!: string[];
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(80) guest_name?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) guest_phone?: string;
@@ -74,6 +82,13 @@ export class BookingsController {
   @ApiOperation({ summary: "Bron (faqat ro'yxatdan o'tgan mijoz; to'lov klubda; ≤5 faol, 5 kun oldin)" })
   create(@Body() dto: CreateBookingDto, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
     return this.svc.create(u, dto, a);
+  }
+
+  @ApiBearerAuth()
+  @Get('me/booking-contact')
+  @ApiOperation({ summary: "Bron formasi uchun aloqa raqami: oxirgi bronda ishlatilgani, bo'lmasa akkaunt raqami" })
+  contactPhone(@CurrentUser() u: AuthUser) {
+    return this.svc.contactPhone(u);
   }
 
   @ApiBearerAuth()
@@ -116,7 +131,7 @@ export class BookingsController {
   @RequirePermission('operator.dashboard')
   @ApiOperation({ summary: 'Joyida bron uchun bo\'sh o\'rindiqlar (start_at bo\'sh — hozir)' })
   operatorAvailability(@Query() q: OperatorAvailabilityQuery, @CurrentUser() u: AuthUser) {
-    return this.svc.operatorAvailability(u.id, q.start_at, q.duration);
+    return this.svc.operatorAvailability(u.id, q.start_at, q.duration ?? 0, !!q.open);
   }
 
   @ApiBearerAuth()
@@ -141,6 +156,15 @@ export class BookingsController {
   @ApiOperation({ summary: 'Mijoz bilan bog\'lanish natijasi' })
   operatorContact(@Param('id', uuid) id: string, @Body() dto: ContactDto, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
     return this.svc.operatorContact(u.id, id, dto.contact_status, dto.note, a);
+  }
+
+  @ApiBearerAuth()
+  @HttpCode(200)
+  @Post('operator/bookings/:id/stop')
+  @RequirePermission('operator.dashboard')
+  @ApiOperation({ summary: "Ochiq sessiyani to'xtatish — summa shu paytgacha (soatlik tarif, daqiqasiga) hisoblanadi" })
+  operatorStop(@Param('id', uuid) id: string, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
+    return this.svc.operatorStop(u.id, id, a);
   }
 
   @ApiBearerAuth()

@@ -79,8 +79,8 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
     wa.ready();
     wa.expand();
     try {
-      wa.setHeaderColor?.("#0e0f13");
-      wa.setBackgroundColor?.("#0e0f13");
+      wa.setHeaderColor?.("#0A0A0A");
+      wa.setBackgroundColor?.("#0A0A0A");
     } catch {
       /* eski klientlar */
     }

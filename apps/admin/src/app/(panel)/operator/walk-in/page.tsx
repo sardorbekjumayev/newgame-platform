@@ -1,7 +1,7 @@
 "use client";
 
 import { formatMoney } from "@ng/types";
-import { CheckCircle2, Clock, Monitor, Phone, User, Zap } from "lucide-react";
+import { CheckCircle2, Clock, Infinity as InfinityIcon, Monitor, Phone, User, Zap } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TimeWheels } from "@/components/time-wheel";
 import { type ZoneLayout, DECOR_ICON, SEAT_CELL, resolveLayout } from "@/components/zone-layout";
@@ -11,10 +11,11 @@ import { session } from "@/lib/session";
 import { type WorkingHours, DAY_KEYS } from "@/lib/types";
 import { useApi } from "@/lib/use-api";
 
-type Device = { id: string; seat_no: number; status: "FREE" | "BUSY" | "UNAVAILABLE" };
+/** `free_until`/`limited_by` — faqat ochiq vaqt rejimida: joy qachongacha bo'sh va nima chekladi (keyingi bron yoki umumiy chegara). */
+type Device = { id: string; seat_no: number; status: "FREE" | "BUSY" | "UNAVAILABLE"; free_until?: string | null; limited_by?: "BOOKING" | "CAP" | null };
 type Zone = { id: string; name: string; color: string | null; devices_count: number | null; layout: ZoneLayout | null; price: number | null; tariff: string | null; free: number; devices: Device[] };
 type Avail = { start_at: string; end_at: string; zones: Zone[] };
-type Created = { id: string; code: string; status: string; start_at: string; end_at: string; total_amount: number; zones: { name: string; seats: number[] }[] };
+type Created = { id: string; code: string; status: string; start_at: string; end_at: string; total_amount: number; zones: { name: string; seats: number[] }[]; is_open?: boolean; open?: { limit_at: string } };
 
 const TZ = "Asia/Tashkent";
 const DURATIONS = [30, 60, 120, 180, 240, 300];
@@ -54,6 +55,8 @@ const day = (offset: number) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ,
 /**
  * Joyida bron: klubga o'zi kelgan mijoz uchun operator 3 bosqichda joyni band qiladi —
  * vaqt (default "hozir") → davomiylik → o'rindiqlar. Ism/telefon ixtiyoriy.
+ * «Ochiq vaqt» — davomiylik o'rniga: hozirdan boshlanadi, tugashi noma'lum; operator to'xtatadi va summa o'shanda
+ * (soatlik tarif bo'yicha) hisoblanadi. Narx bu rejimda soatiga ko'rsatiladi.
  */
 export default function WalkInPage() {
   const { t, locale } = useI18n();
@@ -62,6 +65,7 @@ export default function WalkInPage() {
   const [date, setDate] = useState(() => day(0));
   const [time, setTime] = useState(() => clock(5));
   const [minutes, setMinutes] = useState(60);
+  const [open, setOpen] = useState(false); // ochiq vaqt (har doim "hozir"dan)
   const [customH, setCustomH] = useState("");
   const [zoneId, setZoneId] = useState<string | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
@@ -74,7 +78,7 @@ export default function WalkInPage() {
 
   const minToday = earliestToday(); // bugun shundan oldingi vaqt tanlanmaydi
   const startIso = now ? null : time ? new Date(`${date}T${time}:00+05:00`).toISOString() : null;
-  const path = now ? `/operator/bookings/availability?duration=${minutes}` : startIso ? `/operator/bookings/availability?duration=${minutes}&start_at=${encodeURIComponent(startIso)}` : null;
+  const path = open ? "/operator/bookings/availability?open=1" : now ? `/operator/bookings/availability?duration=${minutes}` : startIso ? `/operator/bookings/availability?duration=${minutes}&start_at=${encodeURIComponent(startIso)}` : null;
   const avail = useApi<Avail>(path);
   const reloadRef = useRef(avail.reload);
   useEffect(() => {
@@ -84,7 +88,14 @@ export default function WalkInPage() {
   const zones = useMemo(() => (avail.data?.zones ?? []).filter((z) => z.devices.length), [avail.data]);
   const zone = zones.find((z) => z.id === zoneId) ?? zones.find((z) => z.free > 0) ?? zones[0] ?? null;
   const devIndex = useMemo(() => new Map(zones.flatMap((z) => z.devices.map((d) => [d.id, { z, d }] as const))), [zones]);
-  const total = picked.reduce((n, id) => n + (devIndex.get(id)?.z.price ?? 0), 0);
+  const total = picked.reduce((n, id) => n + (devIndex.get(id)?.z.price ?? 0), 0); // ochiq vaqtda — soatiga
+  // Ochiq vaqt: tanlangan joylarning eng erta chegarasi (bitta sessiya — bitta tugash)
+  const limit = open
+    ? picked
+        .map((id) => devIndex.get(id)?.d)
+        .filter((d): d is Device => !!d?.free_until)
+        .sort((a, b) => a.free_until!.localeCompare(b.free_until!))[0]
+    : undefined;
 
   // Bandlik o'zgarib turadi — 20 soniyada yangilanadi
   useEffect(() => {
@@ -109,12 +120,10 @@ export default function WalkInPage() {
     setError(null);
     try {
       const res = await session.post<Created>("/operator/bookings/walk-in", {
-        ...(startIso ? { start_at: startIso } : {}),
-        duration_minutes: minutes,
+        ...(open ? { open: true } : { ...(startIso ? { start_at: startIso } : {}), duration_minutes: minutes, check_in: now && checkIn }),
         device_ids: picked,
         guest_name: name.trim() || undefined,
         guest_phone: phone.trim() || undefined,
-        check_in: now && checkIn,
       });
       setDone(res.data);
       setPicked([]);
@@ -141,9 +150,10 @@ export default function WalkInPage() {
         <Card className="flex flex-wrap items-center gap-4 border border-green-500/40 bg-green-500/5">
           <CheckCircle2 className="h-10 w-10 shrink-0 text-green-400" />
           <div className="min-w-0 flex-1">
-            <div className="font-bold">{done.status === "CHECKED_IN" ? t("walkIn.doneNow") : t("walkIn.doneLater")}</div>
+            <div className="font-bold">{done.is_open ? t("walkIn.doneOpen") : done.status === "CHECKED_IN" ? t("walkIn.doneNow") : t("walkIn.doneLater")}</div>
             <div className="text-sm text-muted">
-              {done.zones.map((z) => `${z.name} #${z.seats.join(", #")}`).join(" · ")} · {hm(done.start_at)}–{hm(done.end_at)} · {formatMoney(done.total_amount, locale)}
+              {done.zones.map((z) => `${z.name} #${z.seats.join(", #")}`).join(" · ")} ·{" "}
+              {done.is_open ? `${hm(done.start_at)} → ${t("walkIn.openUntil", { time: hm(done.open?.limit_at ?? done.end_at) })}` : `${hm(done.start_at)}–${hm(done.end_at)} · ${formatMoney(done.total_amount, locale)}`}
             </div>
           </div>
           <div className="text-right">
@@ -161,10 +171,11 @@ export default function WalkInPage() {
               <Chip active={now} onClick={() => (setNow(true), changed())}>
                 <Zap className="h-4 w-4" /> {t("walkIn.now")}
               </Chip>
-              <Chip active={!now && date === day(0)} onClick={() => (setNow(false), setDate(day(0)), setTime(clock(5)), changed())}>
+              {/* Ochiq vaqt faqat hozirdan boshlanadi */}
+              <Chip active={!now && date === day(0)} disabled={open} className="disabled:opacity-40" onClick={() => (setNow(false), setDate(day(0)), setTime(clock(5)), changed())}>
                 {t("opBooking.today")}
               </Chip>
-              <Chip active={!now && date === day(1)} onClick={() => (setNow(false), setDate(day(1)), changed())}>
+              <Chip active={!now && date === day(1)} disabled={open} className="disabled:opacity-40" onClick={() => (setNow(false), setDate(day(1)), changed())}>
                 {t("opBooking.tomorrow")}
               </Chip>
             </div>
@@ -184,7 +195,7 @@ export default function WalkInPage() {
           <Row n={2} title={t("walkIn.howLong")}>
             <div className="flex flex-wrap items-center gap-2">
               {DURATIONS.map((m) => (
-                <Chip key={m} active={!customH && minutes === m} onClick={() => (setCustomH(""), setMinutes(m), changed())}>
+                <Chip key={m} active={!open && !customH && minutes === m} onClick={() => (setOpen(false), setCustomH(""), setMinutes(m), changed())}>
                   {m < 60 ? t("walkIn.min", { n: m }) : t("walkIn.hours", { n: m / 60 })}
                 </Chip>
               ))}
@@ -198,6 +209,7 @@ export default function WalkInPage() {
                     setCustomH(v);
                     const n = Number(v);
                     if (n >= 1 && n <= 12) {
+                      setOpen(false);
                       setMinutes(n * 60);
                       changed();
                     }
@@ -206,10 +218,15 @@ export default function WalkInPage() {
                 />
                 <span className="text-muted">{t("walkIn.h")}</span>
               </label>
+              <Chip active={open} onClick={() => (setOpen(true), setNow(true), setCustomH(""), changed())}>
+                <InfinityIcon className="h-4 w-4" /> {t("walkIn.open")}
+              </Chip>
             </div>
+            {open && <p className="mt-2 text-sm text-muted">{t("walkIn.openHint")}</p>}
             {avail.data && (
               <p className="mt-2 flex items-center gap-1.5 text-sm text-muted">
-                <Clock className="h-4 w-4 text-accent" /> {hm(avail.data.start_at)} – {hm(avail.data.end_at)}
+                <Clock className="h-4 w-4 text-accent" />
+                {open ? `${hm(avail.data.start_at)} → ${t("walkIn.openUntil", { time: hm(avail.data.end_at) })}` : `${hm(avail.data.start_at)} – ${hm(avail.data.end_at)}`}
               </p>
             )}
           </Row>
@@ -244,7 +261,9 @@ export default function WalkInPage() {
                           {n > 0 && <span className="ml-auto rounded-md bg-accent px-1.5 text-xs text-on-accent">{n}</span>}
                         </div>
                         <div className="text-xs text-muted">
-                          {z.price == null ? t("walkIn.noTariff") : `${formatMoney(z.price, locale)} · ${t("walkIn.free", { n: z.free, total: z.devices.length })}`}
+                          {z.price == null
+                            ? t(open ? "walkIn.noHourly" : "walkIn.noTariff")
+                            : `${open ? t("walkIn.perHour", { price: formatMoney(z.price, locale) }) : formatMoney(z.price, locale)} · ${t("walkIn.free", { n: z.free, total: z.devices.length })}`}
                         </div>
                       </button>
                     );
@@ -279,9 +298,16 @@ export default function WalkInPage() {
             <p className="text-sm text-muted">{t("walkIn.noSeats")}</p>
           )}
           <div>
-            <div className="text-xs text-muted">{t("walkIn.total")}</div>
+            <div className="text-xs text-muted">{t(open ? "walkIn.openRate" : "walkIn.total")}</div>
             <div className="font-display text-3xl font-bold text-accent tabular-nums">{formatMoney(total, locale)}</div>
+            {open && <div className="mt-1 text-xs text-muted">{t("walkIn.openTotalHint")}</div>}
           </div>
+          {/* Ochiq vaqt qachongacha davom etishi mumkin: keyingi bron bo'lsa — ogohlantirish */}
+          {limit && (
+            <div className={cx("rounded-xl px-3 py-2 text-sm font-semibold", limit.limited_by === "BOOKING" ? "bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/40" : "bg-surface-2 text-muted")}>
+              {limit.limited_by === "BOOKING" ? t("walkIn.openUntilBooked", { time: hm(limit.free_until!) }) : t("walkIn.openUntil", { time: hm(limit.free_until!) })}
+            </div>
+          )}
           <div className="space-y-2">
             <label className="flex items-center gap-2 rounded-xl border border-line bg-bg px-3">
               <User className="h-4 w-4 shrink-0 text-muted" />
@@ -291,7 +317,7 @@ export default function WalkInPage() {
               <Phone className="h-4 w-4 shrink-0 text-muted" />
               <input value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} inputMode="tel" placeholder={t("walkIn.phone")} className="h-10 w-full bg-transparent text-sm outline-none" />
             </label>
-            {now && (
+            {now && !open && (
               <label className="flex cursor-pointer items-center gap-2 text-sm">
                 <input type="checkbox" checked={checkIn} onChange={(e) => setCheckIn(e.target.checked)} className="h-4 w-4 accent-[var(--color-accent)]" />
                 {t("walkIn.checkIn")}
@@ -300,7 +326,7 @@ export default function WalkInPage() {
           </div>
           {error && <Alert>{error}</Alert>}
           <Button className="h-12 w-full text-base" loading={busy} disabled={!picked.length} onClick={submit}>
-            <Monitor className="h-5 w-5" /> {t("walkIn.submit", { n: picked.length })}
+            <Monitor className="h-5 w-5" /> {t(open ? "walkIn.openSubmit" : "walkIn.submit", { n: picked.length })}
           </Button>
         </Card>
       </div>

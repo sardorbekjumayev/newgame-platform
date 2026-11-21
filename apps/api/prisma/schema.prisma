@@ -404,9 +404,11 @@ model bookings {
   contact_status   String          @default("NEW") // operator qo'ng'irog'i: NEW | CONFIRMED | PREPAID | NO_ANSWER
   contact_note     String?
   contacted_at     DateTime?       @db.Timestamptz
+  contact_phone    String? // mijoz bron paytida ko'rsatgan aloqa raqami (operator qo'ng'irog'i); NULL — akkaunt raqami
   created_at       DateTime        @default(now()) @db.Timestamptz
   updated_at       DateTime        @updatedAt @db.Timestamptz
   source           String          @default("ONLINE") // ONLINE | WALK_IN (operator joyida)
+  is_open          Boolean         @default(false) // ochiq vaqt: operator to'xtatguncha; end_at — vaqtinchalik chegara
   guest_name       String?
   guest_phone      String?
   created_by       String?         @db.Uuid // WALK_IN: operator

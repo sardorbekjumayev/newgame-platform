@@ -8,7 +8,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { OpenBadge, PriceFrom } from "@/components/club-badges";
 import { MapView } from "@/components/map/map-view";
 import type { BBox, LatLng, MapMarker } from "@/components/map/provider";
-import { Button, Spinner } from "@/components/ui";
+import { Chip, Spinner } from "@/components/ui";
 import { useI18n } from "@/i18n/provider";
 import { api } from "@/lib/api";
 import { distanceKm } from "@/lib/geo";
@@ -136,75 +136,86 @@ function ClubsMap() {
   };
 
   return (
-    <main className="flex flex-1 flex-col-reverse lg:h-[calc(100vh-68px)] lg:flex-row">
-      <aside ref={listRef} className="flex flex-col gap-3.5 bg-surface p-5 lg:w-[420px] lg:shrink-0 lg:overflow-y-auto">
-        <div className="flex items-baseline justify-between">
-          <h1 className="font-display text-xl font-bold">{t(mode === "near" ? "map.nearby" : "map.all")}</h1>
-          {state.status === "ready" && <span className="text-[13px] text-muted">{t("map.found", { n: items.length })}</span>}
+    <main className="flex flex-1 flex-col-reverse lg:h-[calc(100vh-76px)] lg:flex-row">
+      <aside ref={listRef} className="flex flex-col gap-3 bg-nav p-5 lg:w-[440px] lg:shrink-0 lg:overflow-y-auto">
+        <div className="flex items-end justify-between gap-3">
+          <h1 className="font-display text-[28px] uppercase leading-none sm:text-[36px]">{t(mode === "near" ? "map.nearby" : "map.all")}</h1>
+          {state.status === "ready" && <span className="shrink-0 text-[13px] font-bold text-muted">{t("map.found", { n: items.length })}</span>}
         </div>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-ink-soft" strokeWidth={2.6} />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder={t("home.searchPlaceholder")}
-            className="h-11 w-full rounded-xl border border-line bg-bg pl-9 pr-3 text-sm outline-none focus:border-accent"
+            placeholder={t("clubs.searchPlaceholder")}
+            aria-label={t("clubs.searchPlaceholder")}
+            className="h-12 w-full rounded-[14px] bg-paper pr-3 pl-11 text-[15px] font-semibold text-ink outline-none placeholder:text-ink-soft focus:ring-4 focus:ring-accent/70"
           />
         </div>
         <div className="flex gap-2">
-          <Button variant={mode === "near" || mode === "locating" ? "primary" : "secondary"} size="sm" onClick={() => locate(true)} disabled={finding}>
-            <LocateFixed className="h-4 w-4" />
+          <Chip active={mode === "near" || mode === "locating"} onClick={() => locate(true)} disabled={finding} className="inline-flex items-center gap-1.5">
+            <LocateFixed className="h-4 w-4" strokeWidth={2.6} />
             {t("map.nearMe")}
-          </Button>
-          <Button variant={mode === "all" ? "primary" : "secondary"} size="sm" onClick={showAll}>
-            <Globe2 className="h-4 w-4" />
+          </Chip>
+          <Chip active={mode === "all"} onClick={showAll} className="inline-flex items-center gap-1.5">
+            <Globe2 className="h-4 w-4" strokeWidth={2.6} />
             {t("map.showAll")}
-          </Button>
+          </Chip>
         </div>
-        {mode === "locating" && <p className="text-xs text-muted">{t("catalog.locating")}</p>}
-        {state.status === "loading" && <Spinner className="mx-auto my-8 h-5 w-5" />}
-        {state.status === "error" && <p className="py-6 text-center text-sm text-muted">{t("map.error")}</p>}
-        {state.status === "ready" && items.length === 0 && <p className="py-6 text-center text-sm text-muted">{t(mode === "near" ? "map.empty" : "catalog.noneYet")}</p>}
-        {items.map((b) => (
-          <button
-            key={b.id}
-            data-id={b.id}
-            onClick={() => {
-              setSelected(b.id);
-              setCenter({ lat: b.latitude, lng: b.longitude });
-            }}
-            className={`flex flex-col gap-1.5 rounded-2xl p-4 text-left transition ${b.id === selected ? "bg-surface-3 ring-1 ring-accent" : "bg-surface-2 hover:bg-surface-3"}`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 font-bold">{b.name}</div>
-              <OpenBadge open={b.is_open_now} />
-            </div>
-            {b.address && (
-              <div className="flex items-center gap-1 truncate text-[13px] text-muted">
-                <MapPin className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{b.address}</span>
+        {mode === "locating" && <p className="text-xs font-semibold text-muted">{t("catalog.locating")}</p>}
+        {state.status === "loading" && <Spinner className="mx-auto my-8 h-6 w-6" />}
+        {state.status === "error" && <p className="py-6 text-center text-sm font-semibold text-muted">{t("map.error")}</p>}
+        {state.status === "ready" && items.length === 0 && (
+          <p className="rounded-[18px] border-2 border-dashed border-line-strong px-4 py-8 text-center text-sm font-semibold text-muted">{t(mode === "near" ? "map.empty" : "catalog.noneYet")}</p>
+        )}
+        {items.map((b) => {
+          const on = b.id === selected;
+          return (
+            <div
+              key={b.id}
+              data-id={b.id}
+              role="button"
+              tabIndex={0}
+              aria-pressed={on}
+              onClick={() => {
+                setSelected(b.id);
+                setCenter({ lat: b.latitude, lng: b.longitude });
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                setSelected(b.id);
+                setCenter({ lat: b.latitude, lng: b.longitude });
+              }}
+              className={`flex cursor-pointer flex-col gap-1.5 rounded-[18px] p-4 text-left transition ${on ? "bg-accent text-on-accent" : "bg-surface hover:bg-surface-2"}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 text-[17px] font-bold">{b.name}</div>
+                <OpenBadge open={b.is_open_now} on={on ? "accent" : "dark"} className="px-2.5! py-1! text-xs!" />
               </div>
-            )}
-            {b.zones.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {b.zones.map((z) => (
-                  <span key={z.name} className="rounded-md bg-bg px-1.5 py-0.5 text-[11px] font-semibold" style={{ color: z.color ?? undefined }}>
-                    {z.name}
-                  </span>
-                ))}
+              {b.address && (
+                <div className={`flex items-center gap-1 text-[13px] font-semibold ${on ? "" : "text-muted"}`}>
+                  <MapPin className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{b.address}</span>
+                </div>
+              )}
+              {b.zones.length > 0 && <div className={`truncate text-[13px] font-semibold ${on ? "" : "text-soft"}`}>{b.zones.map((z) => z.name).join(" · ")}</div>}
+              <div className="text-[13px]">
+                <PriceFrom club={b} />
+                {me && <span className={`font-semibold ${on ? "" : "text-muted"}`}> · {t("map.km", { km: distanceKm(me, { lat: b.latitude, lng: b.longitude }).toFixed(1) })}</span>}
               </div>
-            )}
-            <div className="text-[13px]">
-              <PriceFrom club={b} />
-              {me && <span className="text-muted"> · {t("map.km", { km: distanceKm(me, { lat: b.latitude, lng: b.longitude }).toFixed(1) })}</span>}
+              {on && (
+                <Link
+                  href={`/clubs/${b.id}`}
+                  className="mt-2 inline-flex min-h-12 items-center justify-center rounded-xl bg-ink px-4 font-bold text-fg transition hover:bg-surface-3"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {t("catalog.openClub")}
+                </Link>
+              )}
             </div>
-            {b.id === selected && (
-              <Link href={`/clubs/${b.id}`} className="mt-1 text-[13px] font-bold text-accent hover:underline" onClick={(e) => e.stopPropagation()}>
-                {t("catalog.openClub")}
-              </Link>
-            )}
-          </button>
-        ))}
+          );
+        })}
       </aside>
       <div className="relative flex min-h-[55vh] flex-1">
         <MapView className="flex-1" center={center} zoom={zoom} focus={focus} fit={fit} pin={me} pinAccuracy={accuracy} markers={markers} onBoundsChange={load} onMarkerClick={select} />
@@ -214,16 +225,16 @@ function ClubsMap() {
           disabled={finding}
           title={t("map.locateMe")}
           aria-label={t("map.locateMe")}
-          className="absolute bottom-6 right-4 z-10 grid h-12 w-12 place-items-center rounded-full bg-accent text-on-accent shadow-xl transition hover:scale-105 disabled:opacity-80"
+          className="absolute right-4 bottom-6 z-10 grid h-14 w-14 place-items-center rounded-[14px] border-2 border-ink bg-accent text-on-accent shadow-xl transition hover:bg-accent-hover active:translate-y-px disabled:opacity-80"
         >
-          {finding ? <Spinner className="h-5 w-5" /> : <LocateFixed className="h-6 w-6" />}
+          {finding ? <Spinner className="h-5 w-5 text-on-accent" /> : <LocateFixed className="h-6 w-6" strokeWidth={2.6} />}
         </button>
         {(geoError || (me && accuracy)) && (
           <div className="absolute bottom-6 left-4 right-20 z-10 sm:right-auto sm:max-w-sm">
             {geoError ? (
-              <div className="rounded-xl bg-bg/95 px-3 py-2 text-sm text-danger shadow-lg">{geoError}</div>
+              <div className="rounded-xl border-2 border-danger bg-bg px-3 py-2 text-sm font-semibold text-danger-soft shadow-lg">{geoError}</div>
             ) : (
-              <div className="inline-block rounded-xl bg-bg/90 px-3 py-1.5 text-xs text-muted shadow-lg">{t("map.geo.accuracy", { m: accuracy! })}</div>
+              <div className="inline-block rounded-xl bg-ink px-3 py-1.5 text-xs font-semibold text-muted shadow-lg">{t("map.geo.accuracy", { m: accuracy! })}</div>
             )}
           </div>
         )}

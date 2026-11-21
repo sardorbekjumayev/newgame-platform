@@ -91,8 +91,8 @@ export function SocialLinks({ social, className, size = "md" }: { social: Social
           aria-label={SOCIAL_NAMES[kind]}
           title={SOCIAL_NAMES[kind]}
           className={cx(
-            "grid place-items-center rounded-xl border border-line bg-surface text-muted transition hover:border-accent/50 hover:text-accent",
-            size === "sm" ? "h-9 w-9" : "h-11 w-11",
+            "grid place-items-center rounded-[10px] border-2 border-fg text-fg transition hover:bg-fg hover:text-ink",
+            size === "sm" ? "h-11 w-11" : "h-12 w-12",
           )}
         >
           <SocialIcon kind={kind} />
@@ -133,13 +133,13 @@ export function SocialPromoBanner() {
   }
 
   return (
-    <section className="relative mt-6 flex flex-col gap-4 rounded-[22px] border border-accent/30 bg-accent/5 p-5 pr-12 sm:flex-row sm:items-center sm:justify-between">
+    <section className="relative mt-10 flex flex-col gap-4 rounded-[24px] border-2 border-accent p-5 pr-14 sm:mt-16 sm:flex-row sm:items-center sm:justify-between sm:p-7 sm:pr-16">
       <div>
-        <h2 className="font-display text-lg font-bold">{t("social.follow.title")}</h2>
-        <p className="mt-1 text-sm text-muted">{t("social.follow.text")}</p>
+        <h2 className="font-display text-[28px] uppercase leading-none">{t("social.follow.title")}</h2>
+        <p className="mt-2 text-sm font-semibold text-soft">{t("social.follow.text")}</p>
       </div>
       <SocialLinks social={social} />
-      <button type="button" onClick={dismiss} aria-label={t("social.dismiss")} title={t("social.dismiss")} className="absolute top-3 right-3 rounded-lg p-1.5 text-muted hover:bg-surface-2 hover:text-fg">
+      <button type="button" onClick={dismiss} aria-label={t("social.dismiss")} title={t("social.dismiss")} className="absolute top-3 right-3 grid h-11 w-11 place-items-center rounded-[10px] text-muted hover:bg-surface hover:text-fg">
         <X className="h-4 w-4" />
       </button>
     </section>
@@ -152,8 +152,8 @@ export function SocialFollowCard() {
   const social = useSocial();
   if (!social?.promo_enabled || !entries(social).length) return null;
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-sm">{t("social.follow.after")}</p>
+    <div className="flex flex-col gap-3 rounded-[18px] bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm font-semibold">{t("social.follow.after")}</p>
       <SocialLinks social={social} size="sm" className="shrink-0" />
     </div>
   );

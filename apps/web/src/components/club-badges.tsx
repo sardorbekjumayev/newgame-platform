@@ -1,17 +1,28 @@
 "use client";
 
 import { formatMoney } from "@ng/types";
+import { cx } from "@/components/ui";
 import { useI18n } from "@/i18n/provider";
 import type { ClubCard } from "@/lib/types";
 
-/** "Ochiq/Yopiq" belgisi (ish vaqti kiritilmagan bo'lsa ko'rsatilmaydi). */
-export function OpenBadge({ open }: { open: boolean | null }) {
+/**
+ * "Hozir ochiq / Yopiq" belgisi (ish vaqti kiritilmagan bo'lsa ko'rsatilmaydi).
+ * `on` — qaysi fon ustida: qora (dark), lime yoki oq karta.
+ */
+export function OpenBadge({ open, on = "dark", className }: { open: boolean | null; on?: "dark" | "accent" | "paper"; className?: string }) {
   const { t } = useI18n();
   if (open === null) return null;
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${open ? "bg-accent/15 text-accent" : "bg-surface-3 text-muted"}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${open ? "bg-accent" : "bg-muted"}`} />
-      {open ? t("clubs.open") : t("clubs.closed")}
+    <span
+      className={cx(
+        "inline-flex shrink-0 items-center rounded-full px-3 py-1.5 text-[13px] font-bold whitespace-nowrap",
+        on === "dark" && (open ? "bg-accent text-on-accent" : "border-2 border-line-strong text-muted"),
+        on === "accent" && (open ? "bg-ink text-accent" : "border-2 border-ink text-ink"),
+        on === "paper" && (open ? "bg-ink text-fg" : "border-2 border-ink-soft text-ink-soft"),
+        className,
+      )}
+    >
+      {open ? t("clubs.openNow") : t("clubs.closed")}
     </span>
   );
 }
@@ -20,5 +31,5 @@ export function PriceFrom({ club }: { club: Pick<ClubCard, "price_from" | "price
   const { t, locale } = useI18n();
   if (club.price_from == null) return null;
   const price = formatMoney(club.price_from, locale);
-  return <span className="font-semibold">{club.price_unit === "HOUR" ? t("map.priceFrom", { price }) : t("catalog.packageFrom", { price })}</span>;
+  return <span className="font-bold">{club.price_unit === "HOUR" ? t("map.priceFrom", { price }) : t("catalog.packageFrom", { price })}</span>;
 }

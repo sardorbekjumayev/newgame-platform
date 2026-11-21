@@ -17,10 +17,16 @@ export function ShareClub({ clubId, clubName }: { clubId: string; clubName: stri
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="secondary" onClick={() => setOpen(true)}>
-        <Share2 className="h-4 w-4" />
-        {t("share.button")}
-      </Button>
+      {/* Lime sarlavha ustidagi kvadrat tugma ("orqaga" tugmasi bilan bir xil) */}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={t("share.button")}
+        title={t("share.button")}
+        className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] border-2 border-ink bg-paper text-ink transition hover:bg-ink hover:text-fg active:translate-y-px"
+      >
+        <Share2 className="h-5 w-5" strokeWidth={2.6} />
+      </button>
       {open && <ShareSheet clubId={clubId} clubName={clubName} onClose={() => setOpen(false)} />}
     </>
   );
@@ -83,13 +89,13 @@ function ShareSheet({ clubId, clubName, onClose }: { clubId: string; clubName: s
             <button
               key={f}
               onClick={() => setFormat(f)}
-              className={`h-9 rounded-xl border px-4 text-sm font-semibold transition ${format === f ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface hover:border-muted/60"}`}
+              className={`min-h-11 rounded-full border-2 px-4 text-sm font-bold transition ${format === f ? "border-accent bg-accent text-on-accent" : "border-fg text-fg hover:bg-fg hover:text-ink"}`}
             >
               {t(f === "story" ? "share.story" : "share.post")}
             </button>
           ))}
         </div>
-        <div className="relative mx-auto overflow-hidden rounded-2xl border border-line-soft bg-surface-2" style={{ aspectRatio: format === "story" ? "9 / 16" : "4 / 5", maxHeight: "52vh" }}>
+        <div className="relative mx-auto overflow-hidden rounded-[18px] bg-surface" style={{ aspectRatio: format === "story" ? "9 / 16" : "4 / 5", maxHeight: "52vh" }}>
           {loaded !== format && <div className="absolute inset-0 animate-pulse bg-surface-2" />}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img key={imgUrl} src={imgUrl} alt={clubName} onLoad={() => setLoaded(format)} className="h-full w-full object-contain" />
@@ -100,17 +106,17 @@ function ShareSheet({ clubId, clubName, onClose }: { clubId: string; clubName: s
         </Button>
         <p className="text-center text-xs text-muted">{t("share.instagramHint")}</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <a href={tg} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#229ED9] text-sm font-bold text-white hover:brightness-110">
+          <a href={tg} target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#229ED9] text-sm font-bold text-white hover:brightness-110">
             Telegram
           </a>
-          <a href={wa} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#25D366] text-sm font-bold text-black hover:brightness-110">
+          <a href={wa} target="_blank" rel="noopener noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#25D366] text-sm font-bold text-black hover:brightness-110">
             WhatsApp
           </a>
-          <a href={`${imgUrl}&download=1`} download className="flex h-11 items-center justify-center gap-2 rounded-xl border border-line bg-surface text-sm font-semibold hover:border-muted/60">
+          <a href={`${imgUrl}&download=1`} download className="flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-fg text-sm font-bold transition hover:bg-fg hover:text-ink">
             <Download className="h-4 w-4" />
             {t("share.download")}
           </a>
-          <button onClick={copy} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-line bg-surface text-sm font-semibold hover:border-muted/60">
+          <button onClick={copy} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-fg text-sm font-bold transition hover:bg-fg hover:text-ink">
             {copied ? <Check className="h-4 w-4 text-accent" /> : <Link2 className="h-4 w-4" />}
             {copied ? t("share.copied") : t("share.copy")}
           </button>
