@@ -2,8 +2,12 @@
 # Kontekst — repo ildizi: docker compose -f deploy/docker-compose.yml build
 FROM node:26-slim
 
+# postgresql-client-16 (pg_dump, psql) — super admin zaxira nusxasi (apps/api backups moduli). Versiya baza
+# (postgis/postgis:16) bilan bir xil bo'lishi kerak: Debian'ning o'z klienti (17) yozgan dump 16 ga xatosiz tiklanmaydi.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends openssl ca-certificates \
+ && apt-get install -y --no-install-recommends openssl ca-certificates postgresql-common \
+ && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
+ && apt-get install -y --no-install-recommends postgresql-client-16 \
  && rm -rf /var/lib/apt/lists/* \
  && npm i -g pnpm@12.6.0
 

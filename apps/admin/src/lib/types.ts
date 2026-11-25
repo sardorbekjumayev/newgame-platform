@@ -79,3 +79,13 @@ export type ManagerClubDetail = Omit<ManagerClub, "zones" | "tariffs_count" | "o
   latitude: number | null; longitude: number | null; working_hours: WorkingHours | null;
   zones: (Omit<Zone, "sort_order" | "created_at" | "tariffs_count"> & { tariffs: Omit<Tariff, "zone_id" | "sort_order" | "created_at">[] })[];
 };
+
+/** Super admin zaxira nusxasi: `id` bilan `GET /admin/backups/:id/download` (havola `expires_in` soniya amal qiladi). */
+export type BackupResult = {
+  id: string; file_name: string; size: number; kind: "full" | "period"; from: string | null; to: string | null;
+  tables: number; rows: number; files: number; files_bytes: number; expires_in: number;
+};
+export type BackupInfo = {
+  database_bytes: number; storage_files: number; storage_bytes: number; timezone: string;
+  history: { id: string; at: string; actor: string | null; kind: "full" | "period"; from: string | null; to: string | null; size: number; rows: number; files: number }[];
+};

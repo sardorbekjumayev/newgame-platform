@@ -361,6 +361,9 @@ curl -s "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"     # url to'g'ri, 
 
 > Klub logotiplari va rasmlari bazada emas, `STORAGE_DIR` papkasida (standart `apps/api/storage`) — uni ham zaxiralang.
 
+> Super admin panelidagi **Backup** bo'limi baza + rasmlarni bitta zip qilib beradi. U API serverida `pg_dump` va `psql` ni
+> ishga tushiradi — PostgreSQL klienti (baza bilan bir xil versiya) API ishlayotgan mashinada o'rnatilgan bo'lishi kerak.
+
 `deploy` foydalanuvchisida parolsiz `pg_dump` uchun `~/.pgpass`:
 
 ```bash

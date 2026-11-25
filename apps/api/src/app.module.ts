@@ -23,6 +23,7 @@ import { GeoModule } from './modules/geo/geo.module';
 import { ClubSettingsModule } from './modules/club-settings/club-settings.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { MediaModule } from './modules/media/media.module';
+import { BackupsModule } from './modules/backups/backups.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { MediaModule } from './modules/media/media.module';
     ClubSettingsModule,
     CatalogModule,
     MediaModule,
+    BackupsModule,
     HealthModule,
   ],
   providers: [

@@ -51,6 +51,26 @@ docker exec -it zonup-prod-postgres-1 psql -U zonup -d zonup
 
 ## Zaxira nusxa
 
+**Paneldan:** `admin.zonup.uz` → **Backup** (faqat super admin). «Butun davr» — bazaning to'liq nusxasi (`db/zonup.sql`, pg_dump) va
+barcha rasmlar (`storage/`) bitta zip'da; davr tanlansa — shu kunlarda yaratilgan/o'zgargan qatorlar jadval bo'yicha CSV va shu
+kunlarda yuklangan rasmlar (qisman nusxa, to'liq tiklash uchun emas). Zip serverda saqlanmaydi: API konteynerida vaqtinchalik
+yasaladi, havola 10 daqiqa amal qiladi. `pg_dump`/`psql` image ichida (`postgresql-client-16`, Dockerfile) — versiyasi baza bilan bir xil bo'lsin.
+
+Panel zip'idan tiklash (joriy baza `zonup_old` nomi bilan qoladi):
+
+```bash
+unzip zonup-backup-full_YYYYMMDD-HHMM.zip -d /root/restore
+cd deploy && docker compose stop api web admin
+docker exec zonup-prod-postgres-1 psql -U zonup -d postgres -c 'ALTER DATABASE zonup RENAME TO zonup_old' -c 'CREATE DATABASE zonup'
+# psql — ilova image'idagisi (dump'ni yozgan pg_dump bilan bir xil versiya). Baza konteyneridagi psql 16.4 eski:
+# dump boshidagi \restrict buyrug'ini tushunmaydi ("invalid command \restrict").
+docker run --rm -i --network host --env-file .env zonup-ng:latest sh -c 'psql "${DATABASE_URL%%\?*}" -q -v ON_ERROR_STOP=1' < /root/restore/db/zonup.sql
+cp -a /root/restore/storage/. /var/lib/zonup/storage/ && chown -R 1000:1000 /var/lib/zonup/storage
+docker compose up -d
+```
+
+**Serverda (qo'lda yoki cron):**
+
 ```bash
 mkdir -p /root/backups/zonup
 docker exec zonup-prod-postgres-1 pg_dump -U zonup -Fc zonup > /root/backups/zonup/zonup-$(date +%F).dump
