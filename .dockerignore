@@ -1,0 +1,16 @@
+**/node_modules
+**/.next
+**/.next-*
+**/dist
+**/*.tsbuildinfo
+**/*.log
+**/.env
+**/.env.*
+!**/.env.example
+apps/api/storage
+deploy/.env
+.git
+.claude
+mobile
+loadtest
+template

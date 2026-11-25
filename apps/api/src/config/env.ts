@@ -20,6 +20,8 @@ export type RateLimitRule = { limit: number; window_s: number };
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().default(4900),
+  // Tinglanadigan manzil (prod: 127.0.0.1 — faqat Nginx orqali). Bo'sh — barcha interfeyslar.
+  HOST: optional(z.string()),
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
   JWT_ACCESS_SECRET: z.string().min(32),

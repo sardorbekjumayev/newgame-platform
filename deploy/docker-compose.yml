@@ -1,0 +1,106 @@
+# Zonup production (Docker). Sozlamalar: deploy/.env (namuna — deploy/.env.example, git'ga tushmaydi).
+#
+#   cd deploy
+#   docker compose build                     # image: zonup-ng:latest (api + web + admin)
+#   docker compose up -d                     # migratsiya API ishga tushganda o'zi bajariladi
+#   docker compose run --rm api node_modules/.bin/ts-node prisma/seed/index.ts   # faqat birinchi marta
+#
+# api/web/admin — host tarmog'ida, faqat 127.0.0.1 da tinglaydi (tashqariga Nginx orqali):
+#   4800 API, 4810 mijoz sayti (zonup.uz), 4820 panel (admin.zonup.uz).
+# Host tarmog'i tanlangani sababi: API `trust proxy: loopback` — Nginx'dan kelgan haqiqiy klient IP (rate limit, audit).
+name: zonup-prod
+
+x-app: &app
+  image: zonup-ng:latest
+  network_mode: host
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zonup
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD}
+      POSTGRES_DB: zonup
+    ports: ["127.0.0.1:55445:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zonup -d zonup"]
+      interval: 5s
+      retries: 20
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD}"]
+    ports: ["127.0.0.1:56391:6379"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  api:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        NEXT_PUBLIC_SITE_URL: ${SITE_URL:?SITE_URL}
+        NEXT_PUBLIC_WEB_URL: ${SITE_URL}
+        NEXT_PUBLIC_CLUB_PANEL_URL: ${PANEL_URL:?PANEL_URL}
+        NEXT_PUBLIC_YANDEX_MAPS_KEY: ${YANDEX_MAPS_KEY:-}
+        NEXT_PUBLIC_GA_ID: ${GA_ID:-}
+    working_dir: /app/apps/api
+    command: ["sh", "-c", "node_modules/.bin/prisma migrate deploy && exec node dist/main.js"]
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: "4800"
+      HOST: 127.0.0.1
+      STORAGE_DIR: /data/storage
+    volumes:
+      - ${STORAGE_PATH:-/var/lib/zonup/storage}:/data/storage
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4800/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      start_period: 30s
+      retries: 5
+
+  web:
+    <<: *app
+    working_dir: /app/apps/web
+    command: ["node_modules/.bin/next", "start", "-p", "4810", "-H", "127.0.0.1"]
+    environment:
+      NODE_ENV: production
+    depends_on: [api]
+
+  admin:
+    <<: *app
+    working_dir: /app/apps/admin
+    command: ["node_modules/.bin/next", "start", "-p", "4820", "-H", "127.0.0.1"]
+    environment:
+      NODE_ENV: production
+    depends_on: [api]
+
+volumes:
+  pgdata: {}
+  redisdata: {}

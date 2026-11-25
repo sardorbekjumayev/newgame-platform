@@ -3,6 +3,8 @@
 Bu qo'llanma boshidan oxirigacha **qo'lda** bajarish uchun yozilgan: kodni GitHub'ga yuklashdan tortib, serverda sayt `https` bilan ochilguncha.
 Buyruqlarni ketma-ket nusxalab bajaring. `<...>` ichidagi joylarni o'zingizniki bilan almashtiring.
 
+> **Hozirgi server (zonup.uz) Docker bilan ishlaydi — `deploy/README.md`.** Bu qo'llanma — PM2 bilan qo'lda o'rnatish varianti.
+
 ---
 
 ## 0. Umumiy tasavvur

@@ -28,6 +28,9 @@
 - Har bir xodimda 7 xonali `users.public_id` (User ID). Operator uni menejerga aytadi → menejer `/manager` da kiritadi → `manager_link_requests` da 6 xonali kod yaratiladi va operator panelida ko'rinadi (10 daqiqa, 5 urinish) → operator kodni menejerga aytadi → menejer kodni kiritsa `manager_clubs` ga bog'lanadi. Operator ulanish so'rovini rad etishi mumkin. Menejerni olib tashlash — operator `manager_unlink_requests` so'rovi → super admin `/platform/removals` da ikkala tomon bilan bog'lanib tasdiqlaydi.
 - Operator birinchi kirishda klub joyini Yandex xaritada belgilaydi (`clubs.latitude/longitude`), belgilanmaguncha operator paneli ochilmaydi (`app/(panel)/operator/layout.tsx`). Xarita: `apps/admin/.env.local` → `NEXT_PUBLIC_YANDEX_MAPS_KEY` (JS API 2.1). Qidiruv/teskari geokodlash — API proksisi `GET /geo/search|reverse` (`apps/api/.env` → `YANDEX_GEOCODER_KEY`, HTTP Geocoder, faqat serverda, Redis kesh 24 soat). Kalitlar git'ga tushmaydi.
 
+## Production (zonup.uz)
+Docker: `deploy/` (`Dockerfile`, `docker-compose.yml` — loyiha `zonup-prod`, sirlar `deploy/.env`, yo'riqnoma `deploy/README.md`). API 127.0.0.1:4800, sayt :4810 (`zonup.uz`), panel :4820 (`admin.zonup.uz`; `operator.`/`club.` → 301), baza :55445, Redis :56391 (parolli). Dev portlari (49xx, :55444, :56390) bilan to'qnashmaydi. Eski Zonup (`gameclub-platform`, `zonup-*` konteynerlar) 2026-11-25 da o'chirilgan; bazasining nusxasi `/root/backups/zonup-old-2026-11-25/`. Docker portlarini faqat `127.0.0.1:` bilan oching — Docker ufw'ni chetlab o'tadi.
+
 ## Komandalar
 ```text
 docker compose -p newgame up -d   # postgres :55444, redis :56390
