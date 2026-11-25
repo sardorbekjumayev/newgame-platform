@@ -4,7 +4,7 @@ import { formatMoney } from "@ng/types";
 import { Check, Clock, LayoutGrid, Navigation, Phone } from "lucide-react";
 import Link from "next/link";
 import { use, useState } from "react";
-import { OpenBadge, PriceFrom } from "@/components/club-badges";
+import { ClubLogo, OpenBadge, PriceFrom } from "@/components/club-badges";
 import { MapArt } from "@/components/map/map-art";
 import { MapView } from "@/components/map/map-view";
 import { ShareClub } from "@/components/share-club";
@@ -55,13 +55,29 @@ export default function ClubPage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <main className="mx-auto w-full max-w-[1280px] flex-1 pb-6 md:px-8 md:pt-2 md:pb-28 lg:pb-16">
-      {/* Lime sarlavha */}
-      <section className="flex min-h-[200px] flex-col justify-between gap-8 bg-accent p-5 text-on-accent md:min-h-[300px] md:rounded-[32px] md:p-10">
-        <div className="flex items-center justify-between gap-3">
+      {/* Sarlavha: klub rasmi bo'lsa — rasm (pastdan qoraytirilgan, nom o'qilsin), bo'lmasa lime.
+          `isolate`/z-index qo'ymang: ulashish oynasi shu yerda ochiladi va yangi stacking context uni yopishqoq bron kartasi ostida qoldiradi. */}
+      <section
+        className={cx(
+          "relative flex flex-col justify-between gap-8 overflow-hidden p-5 md:rounded-[32px] md:p-10",
+          c.photo_url ? "min-h-[320px] bg-surface text-fg md:min-h-[440px]" : "min-h-[200px] bg-accent text-on-accent md:min-h-[300px]",
+        )}
+      >
+        {c.photo_url && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- API'dagi tayyor webp */}
+            <img src={c.photo_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/35 to-black/10" />
+          </>
+        )}
+        <div className="relative flex items-center justify-between gap-3">
           <BackButton href="/map" label={t("nav.map")} tone="light" />
           <ShareClub clubId={c.id} clubName={c.name} />
         </div>
-        <h1 className="font-display text-[44px] uppercase leading-none break-words md:text-[80px] lg:text-[104px]">{c.name}</h1>
+        <div className="relative space-y-4">
+          {c.logo_url && <ClubLogo url={c.logo_url} className="h-16 w-16 rounded-[16px]! md:h-24 md:w-24 md:rounded-[20px]!" />}
+          <h1 className="font-display text-[44px] uppercase leading-none break-words md:text-[80px] lg:text-[104px]">{c.name}</h1>
+        </div>
       </section>
 
       <div className="grid items-start gap-8 px-5 pt-4 md:px-0 md:pt-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10">

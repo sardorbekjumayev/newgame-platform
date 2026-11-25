@@ -4,7 +4,7 @@ import { ArrowUpRight, Check, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { OpenBadge, PriceFrom } from "@/components/club-badges";
+import { ClubLogo, OpenBadge, PriceFrom } from "@/components/club-badges";
 import { HeroArt } from "@/components/hero-art";
 import { MapArt } from "@/components/map/map-art";
 import { MapView } from "@/components/map/map-view";
@@ -314,10 +314,12 @@ function ClubTile({ club: b, tone }: { club: ClubCard; tone: (typeof TONES)[numb
       )}
     >
       <div className="hidden items-start gap-3 sm:flex">
+        {b.logo_url && <ClubLogo url={b.logo_url} className="h-14 w-14" />}
         <OpenBadge open={b.is_open_now} on={tone.on} />
         <ArrowUpRight className="ml-auto h-9 w-9 shrink-0 transition group-hover:translate-x-1 group-hover:-translate-y-1" strokeWidth={2.4} />
       </div>
-      <div className="min-w-0">
+      {b.logo_url && <ClubLogo url={b.logo_url} className="h-11 w-11 sm:hidden" />}
+      <div className="min-w-0 flex-1 sm:flex-none">
         <div className="truncate text-[17px] font-bold sm:line-clamp-2 sm:font-display sm:text-[44px] sm:leading-none sm:font-normal sm:whitespace-normal sm:uppercase">{b.name}</div>
         <div className="truncate text-[13px] font-semibold sm:mt-2 sm:text-base">{zones || b.address || b.city}</div>
         <div className="mt-1 hidden truncate sm:block">

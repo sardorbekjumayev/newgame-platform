@@ -505,5 +505,21 @@
   "errors.CONFLICT.DEVICE_BUSY": "Выбранное место занято — выберите другое",
   "errors.CONFLICT.OPEN_WINDOW_TOO_SHORT": "На этом месте скоро бронь — для открытого времени нужно минимум 30 свободных минут",
   "errors.VALIDATION_ERROR.NO_HOURLY_TARIFF": "В этой зоне нет почасового тарифа — открытое время недоступно",
-  "errors.VALIDATION_ERROR.OUTSIDE_HOURS": "Клуб сейчас закрыт — проверьте часы работы"
+  "errors.VALIDATION_ERROR.OUTSIDE_HOURS": "Клуб сейчас закрыт — проверьте часы работы",
+  "images.title": "Логотип и фото клуба",
+  "images.subtitle": "Показываются на сайте для клиентов: страница клуба, карта и списки.",
+  "images.logo": "Логотип",
+  "images.photo": "Фото клуба",
+  "images.addLogo": "Загрузить логотип",
+  "images.addPhoto": "Загрузить фото клуба",
+  "images.logoHint": "Квадратный. PNG, JPG или WEBP, до 10 МБ. Прозрачный фон сохраняется.",
+  "images.photoHint": "Зал или вход, лучше горизонтальное фото. PNG, JPG или WEBP, до 10 МБ.",
+  "images.upload": "Загрузить",
+  "images.replace": "Заменить",
+  "images.delete": "Удалить",
+  "images.deleteLogoConfirm": "Удалить логотип?",
+  "images.deletePhotoConfirm": "Удалить фото клуба?",
+  "errors.VALIDATION_ERROR.INVALID_IMAGE": "Не удалось открыть изображение. Выберите PNG, JPG или WEBP.",
+  "errors.VALIDATION_ERROR.PAYLOAD_TOO_LARGE": "Файл слишком большой — максимум 10 МБ.",
+  "errors.VALIDATION_ERROR.FILE_REQUIRED": "Выберите изображение"
 }

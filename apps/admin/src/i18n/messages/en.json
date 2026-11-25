@@ -505,5 +505,21 @@
   "errors.CONFLICT.DEVICE_BUSY": "The selected seat is taken — pick another",
   "errors.CONFLICT.OPEN_WINDOW_TOO_SHORT": "This seat has a booking soon — open time needs at least 30 free minutes",
   "errors.VALIDATION_ERROR.NO_HOURLY_TARIFF": "This zone has no hourly tariff — open time is not available",
-  "errors.VALIDATION_ERROR.OUTSIDE_HOURS": "The club is closed right now — check the working hours"
+  "errors.VALIDATION_ERROR.OUTSIDE_HOURS": "The club is closed right now — check the working hours",
+  "images.title": "Logo and club photo",
+  "images.subtitle": "Shown on the customer site: club page, map and lists.",
+  "images.logo": "Logo",
+  "images.photo": "Club photo",
+  "images.addLogo": "Upload logo",
+  "images.addPhoto": "Upload club photo",
+  "images.logoHint": "Square works best. PNG, JPG or WEBP, up to 10 MB. Transparency is kept.",
+  "images.photoHint": "The hall or entrance; landscape photos look best. PNG, JPG or WEBP, up to 10 MB.",
+  "images.upload": "Upload",
+  "images.replace": "Replace",
+  "images.delete": "Delete",
+  "images.deleteLogoConfirm": "Delete the logo?",
+  "images.deletePhotoConfirm": "Delete the club photo?",
+  "errors.VALIDATION_ERROR.INVALID_IMAGE": "Couldn't open the image. Choose a PNG, JPG or WEBP file.",
+  "errors.VALIDATION_ERROR.PAYLOAD_TOO_LARGE": "The file is too large — 10 MB max.",
+  "errors.VALIDATION_ERROR.FILE_REQUIRED": "Choose an image"
 }

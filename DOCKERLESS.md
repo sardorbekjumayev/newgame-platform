@@ -198,6 +198,9 @@ RATE_LIMIT_WRITE=30/60
 RATE_LIMIT_SENSITIVE=20/300
 
 YANDEX_GEOCODER_KEY=<geocoder kaliti>
+
+# Operator yuklagan klub logotipi va rasmi. Bo'sh — apps/api/storage (git'da yo'q, `git pull` o'chirmaydi)
+STORAGE_DIR=
 ```
 
 ### 6.2. Mijoz sayti — `apps/web/.env.local`
@@ -208,6 +211,8 @@ NEXT_PUBLIC_SITE_URL=https://zonup.uz
 NEXT_PUBLIC_TOKEN_KEY=ng.tokens
 NEXT_PUBLIC_CLUB_PANEL_URL=https://panel.zonup.uz/login
 NEXT_PUBLIC_YANDEX_MAPS_KEY=<JavaScript API kaliti>
+# Google Analytics 4 o'lchov ID (G-XXXXXXX). Bo'sh — GA yuklanmaydi
+NEXT_PUBLIC_GA_ID=
 ```
 
 ### 6.3. Panel — `apps/admin/.env.local`
@@ -353,6 +358,8 @@ curl -s "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"     # url to'g'ri, 
 ---
 
 ## 11. Zaxira nusxa (backup)
+
+> Klub logotiplari va rasmlari bazada emas, `STORAGE_DIR` papkasida (standart `apps/api/storage`) — uni ham zaxiralang.
 
 `deploy` foydalanuvchisida parolsiz `pg_dump` uchun `~/.pgpass`:
 

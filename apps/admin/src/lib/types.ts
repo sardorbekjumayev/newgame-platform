@@ -36,6 +36,8 @@ export type OperatorDashboard = {
   club: {
     id: string; name: string; city: string; address: string | null; phone: string | null; status: string; created_at: string;
     latitude: number | null; longitude: number | null; location_set_at: string | null; needs_location: boolean;
+    /** Logotip va klub rasmi (webp, `/api/v1/media/...`); null — yuklanmagan */
+    logo_url: string | null; photo_url: string | null;
   };
   managers: (Person & { phone: string | null; linked_at: string; removal_request: { id: string; reason: string | null; created_at: string; by_manager: boolean } | null })[];
   link_requests: { id: string; code: string; expires_at: string; created_at: string; manager: Person }[];

@@ -6,6 +6,7 @@ import { uuidv7 } from '../../common/utils/id';
 import { isOpenNow } from '../catalog/open-now';
 import { PrismaService } from '../../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { type ClubImageKind, MediaService, mediaUrl } from '../media/media.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 /** Kod amal qilish muddati va xato urinishlar chegarasi. */
@@ -25,6 +26,7 @@ export class PanelsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly subs: SubscriptionsService,
+    private readonly media: MediaService,
   ) {}
 
   // ---------- Operator ----------
@@ -37,19 +39,19 @@ export class PanelsService {
       this.prisma.clubs.findUniqueOrThrow({
         where: { id: role.club_id! },
         select: {
-          ...clubPublic, latitude: true, longitude: true, location_set_at: true,
+          ...clubPublic, latitude: true, longitude: true, location_set_at: true, logo_path: true, photo_path: true,
           managers: { select: { linked_at: true, manager: { select: { ...personPublic, phone: true } } }, orderBy: { linked_at: 'desc' } },
           unlink_requests: { where: { status: 'PENDING' }, select: { id: true, manager_id: true, requested_by: true, reason: true, created_at: true } },
         },
       }),
     ]);
-    const { managers, unlink_requests, ...rest } = club;
+    const { managers, unlink_requests, logo_path, photo_path, ...rest } = club;
     const pendingRemoval = new Map(unlink_requests.map(({ requested_by, ...r }) => [r.manager_id, { ...r, by_manager: requested_by === r.manager_id }]));
     // Operator User ID sini menejerga aytadi → menejer so'rov yuboradi → kod shu yerda ko'rinadi
     return {
       me,
       // Klub joyi xaritada belgilanmagan — operator panelida birinchi qadam
-      club: { ...rest, needs_location: rest.latitude === null || rest.longitude === null },
+      club: { ...rest, logo_url: mediaUrl(logo_path), photo_url: mediaUrl(photo_path), needs_location: rest.latitude === null || rest.longitude === null },
       managers: managers.map((m) => ({ ...m.manager, linked_at: m.linked_at, removal_request: pendingRemoval.get(m.manager.id) ?? null })),
       link_requests: await this.operatorRequests(role.club_id!),
       subscription: (await this.subs.summaries([role.club_id!])).get(role.club_id!) ?? null,
@@ -93,6 +95,29 @@ export class PanelsService {
       });
       await this.audit.log({ actor_id: actor.id, club_id: clubId, action: 'operator.club.location', target_type: 'club', target_id: clubId, old_value: old, new_value: loc, ip: actor.ip, user_agent: actor.ua, request_id: actor.request_id }, tx);
     });
+    return this.operatorDashboard(userId);
+  }
+
+  /**
+   * Klub logotipi yoki rasmi (bittadan): yangisi saqlanadi, eskisi o'chiriladi. `file` null — olib tashlash.
+   * Fayl DB yozuvidan oldin saqlanadi; tranzaksiya yiqilsa yangi fayl o'chiriladi.
+   */
+  async setClubImage(userId: string, kind: ClubImageKind, file: Buffer | null, actor: Actor) {
+    const clubId = await this.operatorClubId(userId);
+    const col = kind === 'logo' ? 'logo_path' : 'photo_path';
+    const old = (await this.prisma.clubs.findUniqueOrThrow({ where: { id: clubId }, select: { logo_path: true, photo_path: true } }))[col];
+    if (!file && !old) return this.operatorDashboard(userId);
+    const next = file ? await this.media.saveClubImage(clubId, kind, file) : null;
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.clubs.update({ where: { id: clubId }, data: { [col]: next } });
+        await this.audit.log({ actor_id: actor.id, club_id: clubId, action: `operator.club.${kind}`, target_type: 'club', target_id: clubId, old_value: { [col]: old }, new_value: { [col]: next }, ip: actor.ip, user_agent: actor.ua, request_id: actor.request_id }, tx);
+      });
+    } catch (e) {
+      await this.media.remove(next);
+      throw e;
+    }
+    await this.media.remove(old);
     return this.operatorDashboard(userId);
   }
 

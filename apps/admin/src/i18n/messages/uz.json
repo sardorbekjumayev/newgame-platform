@@ -505,5 +505,21 @@
   "errors.CONFLICT.DEVICE_BUSY": "Tanlangan joy band — boshqasini tanlang",
   "errors.CONFLICT.OPEN_WINDOW_TOO_SHORT": "Bu joyda yaqin orada bron bor — ochiq vaqt uchun kamida 30 daqiqa bo'sh bo'lishi kerak",
   "errors.VALIDATION_ERROR.NO_HOURLY_TARIFF": "Bu zonada soatlik tarif yo'q — ochiq vaqt ochib bo'lmaydi",
-  "errors.VALIDATION_ERROR.OUTSIDE_HOURS": "Klub hozir yopiq — ish vaqtini tekshiring"
+  "errors.VALIDATION_ERROR.OUTSIDE_HOURS": "Klub hozir yopiq — ish vaqtini tekshiring",
+  "images.title": "Logotip va klub rasmi",
+  "images.subtitle": "Mijozlar saytida klub sahifasi, xarita va ro'yxatlarda ko'rinadi.",
+  "images.logo": "Logotip",
+  "images.photo": "Klub rasmi",
+  "images.addLogo": "Logotip yuklash",
+  "images.addPhoto": "Klub rasmini yuklash",
+  "images.logoHint": "Kvadrat ko'rinishda. PNG, JPG yoki WEBP, 10 MB gacha. Shaffof fon saqlanadi.",
+  "images.photoHint": "Zal yoki kirish qismi, gorizontal rasm yaxshi ko'rinadi. PNG, JPG yoki WEBP, 10 MB gacha.",
+  "images.upload": "Yuklash",
+  "images.replace": "Almashtirish",
+  "images.delete": "O'chirish",
+  "images.deleteLogoConfirm": "Logotip o'chirilsinmi?",
+  "images.deletePhotoConfirm": "Klub rasmi o'chirilsinmi?",
+  "errors.VALIDATION_ERROR.INVALID_IMAGE": "Rasm ochilmadi. PNG, JPG yoki WEBP formatdagi rasm tanlang.",
+  "errors.VALIDATION_ERROR.PAYLOAD_TOO_LARGE": "Fayl juda katta — ko'pi bilan 10 MB.",
+  "errors.VALIDATION_ERROR.FILE_REQUIRED": "Rasm tanlang"
 }

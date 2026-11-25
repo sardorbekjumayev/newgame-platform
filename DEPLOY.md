@@ -247,6 +247,9 @@ RATE_LIMIT_SENSITIVE=20/300
 
 # Yandex HTTP Geocoder (operator klub manzilini qidirishi uchun)
 YANDEX_GEOCODER_KEY=<geocoder kaliti>
+
+# Operator yuklagan klub logotipi va rasmi. Bo'sh — apps/api/storage (git'da yo'q, `git pull` o'chirmaydi)
+STORAGE_DIR=
 ```
 
 ### 6.2. Mijoz sayti — `apps/web/.env.local`
@@ -261,6 +264,8 @@ NEXT_PUBLIC_SITE_URL=https://zonup.uz
 NEXT_PUBLIC_TOKEN_KEY=ng.tokens
 NEXT_PUBLIC_CLUB_PANEL_URL=https://panel.zonup.uz/login
 NEXT_PUBLIC_YANDEX_MAPS_KEY=<JavaScript API kaliti>
+# Google Analytics 4 o'lchov ID (G-XXXXXXX). Bo'sh — GA yuklanmaydi
+NEXT_PUBLIC_GA_ID=
 ```
 
 ### 6.3. Panel — `apps/admin/.env.local`
@@ -478,6 +483,8 @@ Agar xarita ochilmasa — 1-bo'limdagi Yandex "HTTP Referer" cheklovini tekshiri
 ---
 
 ## 12. Zaxira nusxa (backup) — majburiy
+
+> Klub logotiplari va rasmlari bazada emas, `STORAGE_DIR` papkasida (standart `~/zonup/apps/api/storage`) — uni ham zaxiralang (masalan `tar czf ~/backups/storage-$(date +%F).tgz -C ~/zonup/apps/api storage`).
 
 Har kuni tunda bazaning nusxasi, 14 kun saqlanadi. `deploy` foydalanuvchisi ostida:
 

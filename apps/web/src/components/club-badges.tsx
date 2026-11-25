@@ -27,6 +27,16 @@ export function OpenBadge({ open, on = "dark", className }: { open: boolean | nu
   );
 }
 
+/** Klub logotipi: oq fonli kvadrat (shaffof logotiplar ham ko'rinadi). O'lchami `className` bilan. */
+export function ClubLogo({ url, className }: { url: string; className?: string }) {
+  return (
+    <span className={cx("grid shrink-0 place-items-center overflow-hidden rounded-[12px] border-2 border-ink bg-paper", className)}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- API'dagi tayyor webp */}
+      <img src={url} alt="" loading="lazy" className="h-full w-full object-contain p-1" />
+    </span>
+  );
+}
+
 export function PriceFrom({ club }: { club: Pick<ClubCard, "price_from" | "price_unit"> }) {
   const { t, locale } = useI18n();
   if (club.price_from == null) return null;

@@ -9,6 +9,7 @@ const STATUS_TO_CODE: Record<number, ErrorCode> = {
   403: 'FORBIDDEN',
   404: 'NOT_FOUND',
   409: 'CONFLICT',
+  413: 'VALIDATION_ERROR',
   422: 'VALIDATION_ERROR',
   429: 'RATE_LIMITED',
 };
@@ -59,6 +60,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       } else {
         message = exception.message;
       }
+      // Fayl chegarasidan katta (multer) — klient aniq matn ko'rsatadi
+      if (status === HttpStatus.PAYLOAD_TOO_LARGE) details = { reason: 'PAYLOAD_TOO_LARGE' };
     } else if (isClientHttpError(exception)) {
       // body-parser xatolari (masalan, 100 KB dan katta JSON — 413, buzuq JSON — 400) 500 emas
       status = exception.status;

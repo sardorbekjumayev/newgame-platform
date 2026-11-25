@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { Anton, Inter, Oswald } from "next/font/google";
 import "./globals.css";
+import { GoogleAnalytics } from "@/components/analytics";
 import { Header } from "@/components/header";
 import { SiteFooter } from "@/components/site-footer";
 import { Providers } from "./providers";
@@ -77,6 +78,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Telegram Mini App SDK (oddiy brauzerda hech narsa qilmaydi) */}
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
+        <GoogleAnalytics />
         <Providers>
           <Header />
           {children}

@@ -10,6 +10,7 @@ import { SocialFollowCard } from "@/components/social";
 import { Alert, BackButton, Button, Input, Modal, Option, Spinner, StepLabel, buttonClass, cx } from "@/components/ui";
 import { type DecorKind, ZoneLayoutView, type ZoneLayout } from "@/components/zone-layout-view";
 import { type MessageKey, useErrorText, useI18n } from "@/i18n/provider";
+import { track } from "@/lib/analytics";
 import { durationLabel, fmtDate, fmtDay, fmtPhone, fmtTime, tzDate } from "@/lib/format";
 import { session, useAuth } from "@/lib/session";
 import { getWebApp } from "@/lib/telegram";
@@ -136,6 +137,8 @@ export function BookingFlow({ club }: { club: ClubDetailPublic }) {
       const res = await session.post<TicketBooking>("/bookings", { club_id: clubId, start_at: start, duration_minutes: minutes, device_ids: picked, contact_phone: contactPhone });
       setAskPhone(false);
       setDone(res.data);
+      // GA4 konversiyasi: faqat klub ID va sonlar (shaxsiy ma'lumotsiz)
+      track("booking_created", { club_id: clubId, duration_minutes: minutes, seats: picked.length });
       getWebApp()?.HapticFeedback?.notificationOccurred("success");
       window.scrollTo({ top: 0 });
     } catch (e) {

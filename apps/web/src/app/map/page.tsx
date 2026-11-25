@@ -5,7 +5,7 @@ import { Globe2, LocateFixed, MapPin, Search } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { OpenBadge, PriceFrom } from "@/components/club-badges";
+import { ClubLogo, OpenBadge, PriceFrom } from "@/components/club-badges";
 import { MapView } from "@/components/map/map-view";
 import type { BBox, LatLng, MapMarker } from "@/components/map/provider";
 import { Chip, Spinner } from "@/components/ui";
@@ -189,8 +189,9 @@ function ClubsMap() {
               }}
               className={`flex cursor-pointer flex-col gap-1.5 rounded-[18px] p-4 text-left transition ${on ? "bg-accent text-on-accent" : "bg-surface hover:bg-surface-2"}`}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 text-[17px] font-bold">{b.name}</div>
+              <div className="flex items-start gap-3">
+                {b.logo_url && <ClubLogo url={b.logo_url} className="h-11 w-11" />}
+                <div className="min-w-0 flex-1 self-center text-[17px] font-bold">{b.name}</div>
                 <OpenBadge open={b.is_open_now} on={on ? "accent" : "dark"} className="px-2.5! py-1! text-xs!" />
               </div>
               {b.address && (

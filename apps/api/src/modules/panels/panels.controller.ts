@@ -1,13 +1,17 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseEnumPipe, ParseUUIDPipe, Post, Put, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import { IsLatitude, IsLongitude, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { type Actor, CurrentActor } from '../../common/decorators/actor.decorator';
 import { AuthUser, CurrentUser, RequirePermission } from '../../common/decorators/auth.decorators';
+import { AppException } from '../../common/errors';
 import { RateLimit } from '../../common/rate-limit/rate-limit.decorators';
+import { CLUB_IMAGE_KINDS, type ClubImageKind, MAX_UPLOAD_BYTES } from '../media/media.service';
 import { PanelsService } from './panels.service';
 
 const uuid = new ParseUUIDPipe();
+const imageKind = new ParseEnumPipe(CLUB_IMAGE_KINDS);
 
 export class LinkClubDto {
   @ApiProperty({ example: '4827193', description: 'Operator profilidagi 7 xonali User ID' })
@@ -61,6 +65,26 @@ export class PanelsController {
   @ApiOperation({ summary: 'Operator: klub joyini xaritada belgilash (birinchi kirishda majburiy)' })
   location(@Body() dto: LocationDto, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
     return this.svc.setLocation(u.id, dto, a);
+  }
+
+  @Post('operator/club/:kind')
+  @HttpCode(200)
+  @RequirePermission('operator.dashboard')
+  @RateLimit('write')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary' } } } })
+  @ApiOperation({ summary: "Operator: klub logotipi (kind=logo) yoki rasmi (kind=photo) — bittadan, eskisi almashtiriladi. JPG/PNG/WEBP, ≤10 MB" })
+  uploadImage(@Param('kind', imageKind) kind: ClubImageKind, @UploadedFile() file: { buffer: Buffer } | undefined, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
+    if (!file?.buffer?.length) throw new AppException('VALIDATION_ERROR', 'File is required', { field: 'file', reason: 'FILE_REQUIRED' });
+    return this.svc.setClubImage(u.id, kind, file.buffer, a);
+  }
+
+  @Delete('operator/club/:kind')
+  @RequirePermission('operator.dashboard')
+  @ApiOperation({ summary: 'Operator: klub logotipi yoki rasmini olib tashlash' })
+  deleteImage(@Param('kind', imageKind) kind: ClubImageKind, @CurrentUser() u: AuthUser, @CurrentActor() a: Actor) {
+    return this.svc.setClubImage(u.id, kind, null, a);
   }
 
   @Post('operator/managers/:managerId/removal-request')

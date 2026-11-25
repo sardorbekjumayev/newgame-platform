@@ -31,6 +31,8 @@ export const envSchema = z.object({
   APP_TIMEZONE_DEFAULT: z.string().default('Asia/Tashkent'),
   // Mijoz sayti (Telegram botdagi "Saytda ochish" tugmasi; faqat https bo'lsa ko'rsatiladi)
   PUBLIC_WEB_URL: optional(z.string().url()),
+  // Yuklangan fayllar (klub logotipi/rasmi) papkasi; nisbiy bo'lsa API ishga tushgan papkaga nisbatan
+  STORAGE_DIR: z.preprocess((v) => (v === '' ? undefined : v), z.string().default('./storage')),
   // Yandex HTTP Geocoder (manzil qidiruvi / teskari geokodlash) — kalit faqat serverda, brauzerga chiqmaydi
   YANDEX_GEOCODER_KEY: optional(z.string()),
   // Telegram bot — login kodi (OTP) shu bot orqali yuboriladi. Token bo'lmasa dev'da qat'iy kod 000000.

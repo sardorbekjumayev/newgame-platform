@@ -321,6 +321,8 @@ export type SupportTicketDetail = SupportTicket & { can_reply: boolean; messages
 export type ClubCard = {
   id: string; name: string; city: string; address: string | null; phone: string | null; latitude: number; longitude: number;
   zones: { name: string; color: string | null }[]; price_from: number | null; price_unit: "HOUR" | "PACKAGE" | null; is_open_now: boolean | null;
+  /** Operator yuklagan logotip va klub rasmi (webp); null — yo'q */
+  logo_url: string | null; photo_url: string | null;
 };
 export type PublicTariff = { id: string; name: string; type: "HOURLY" | "PACKAGE"; price: number; duration_minutes: number | null; valid_from: string | null; valid_to: string | null };
 export type PublicZone = { id: string; name: string; description: string | null; color: string | null; devices_count: number | null; layout: import("@/components/zone-layout-view").ZoneLayout | null; tariffs: PublicTariff[] };

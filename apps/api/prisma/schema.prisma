@@ -246,6 +246,9 @@ model clubs {
   latitude        Float?
   longitude       Float?
   location_set_at DateTime?                 @db.Timestamptz
+  // Logotip va klub rasmi (operator yuklaydi, webp) — STORAGE_DIR ga nisbiy yo'l; ommaga /api/v1/media/<yo'l>
+  logo_path       String?
+  photo_path      String?
   // Ish vaqti: { always_open?: true, mon: [{open:"10:00",close:"02:00"}], ... } — bo'sh massiv = dam olish kuni;
   // close <= open bo'lsa keyingi kunga o'tadi. Vaqt Asia/Tashkent bo'yicha. null — hali kiritilmagan.
   working_hours   Json?
